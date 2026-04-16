@@ -5,7 +5,8 @@ import { useTranslation } from "@/lib/i18n/locale-provider";
 import { useChartOptions } from "@/lib/theme/chart-theme";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { PageHeader } from "@/components/layout/page-header";
-import { UsersRound, RefreshCw, ChevronRight, Info } from "lucide-react";
+import { DataSourceBanner } from "@/components/layout/report-filters";
+import { Network, ChevronRight, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /* ── Types ── */
@@ -35,7 +36,6 @@ export default function EnterpriseTeamsPage() {
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [loadingTeams, setLoadingTeams] = useState(true);
   const [loadingMembers, setLoadingMembers] = useState(false);
-  const [syncing, setSyncing] = useState(false);
 
   /* ── Fetch teams ── */
 
@@ -84,23 +84,6 @@ export default function EnterpriseTeamsPage() {
     [fetchMembers],
   );
 
-  /* ── Sync teams ── */
-
-  const handleSync = useCallback(async () => {
-    setSyncing(true);
-    try {
-      const res = await fetch("/api/enterprise-teams/sync", { method: "POST" });
-      if (!res.ok) throw new Error(`Sync failed: ${res.status}`);
-      await fetchTeams();
-      setSelectedTeamId(null);
-      setMembers([]);
-    } catch (err) {
-      console.error("[enterprise-teams] Sync error:", err);
-    } finally {
-      setSyncing(false);
-    }
-  }, [fetchTeams]);
-
   /* ── Derived stats ── */
 
   const totalMembers = teams.reduce((sum, team) => sum + team.memberCount, 0);
@@ -123,23 +106,8 @@ export default function EnterpriseTeamsPage() {
       <PageHeader
         title={t("teams.title")}
         subtitle={t("teams.subtitle")}
-        actions={
-          <button
-            type="button"
-            disabled={syncing}
-            onClick={handleSync}
-            className={cn(
-              "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium shadow-xs transition-colors",
-              syncing
-                ? "cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500"
-                : "bg-blue-600 text-white hover:bg-blue-700",
-            )}
-          >
-            <RefreshCw className={cn("h-4 w-4", syncing && "animate-spin")} />
-            {syncing ? t("teams.syncing") : t("teams.syncTeams")}
-          </button>
-        }
       />
+      <DataSourceBanner sourceLabel="GitHub Enterprise Teams API" />
 
       {/* About this page */}
       <div className="flex items-start gap-3 rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
@@ -178,7 +146,7 @@ export default function EnterpriseTeamsPage() {
       {teams.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-lg border border-gray-200 bg-white px-6 py-16 text-center dark:border-gray-700 dark:bg-gray-800">
           <div className="mb-4 rounded-full bg-gray-100 p-4 dark:bg-gray-700">
-            <UsersRound className="h-8 w-8 text-gray-400 dark:text-gray-500" />
+            <Network className="h-8 w-8 text-gray-400 dark:text-gray-500" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             {t("teams.noTeams")}

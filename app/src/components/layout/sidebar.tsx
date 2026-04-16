@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme/theme-provider";
 import { useTranslation } from "@/lib/i18n/locale-provider";
 import {
-  Users,
-  UsersRound,
+  Contact,
+  Network,
   Bot,
   Code,
   BarChart3,
@@ -33,8 +33,8 @@ const NAV_KEYS = [
   { key: "nav.cliImpact", href: "/cli", icon: Terminal },
   { key: "nav.copilotLicensing", href: "/seats", icon: CreditCard },
   { key: "nav.premiumRequests", href: "/premium-requests", icon: Sparkles },
-  { key: "nav.usersData", href: "/users", icon: Users },
-  { key: "nav.enterpriseTeams", href: "/enterprise-teams", icon: UsersRound },
+  { key: "nav.usersData", href: "/users", icon: Contact },
+  { key: "nav.enterpriseTeams", href: "/enterprise-teams", icon: Network },
   { key: "nav.metricsReference", href: "/reference", icon: BookOpen },
 ];
 

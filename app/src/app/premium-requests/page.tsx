@@ -18,6 +18,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { usePdfExport } from "@/components/ui/pdf-export";
 import { ConfigurationBanner } from "@/components/layout/configuration-banner";
+import { DataSourceBanner } from "@/components/layout/report-filters";
 import { AlertTriangle, Settings } from "lucide-react";
 import Link from "next/link";
 
@@ -226,6 +227,7 @@ export default function PremiumRequestsPage() {
         subtitle={t("premiumRequests.subtitle")}
         actions={<PdfButton />}
       />
+      <DataSourceBanner sourceLabel="GitHub Premium Request Billing API" />
 
       {/* Month Selector */}
       <div className="flex items-center gap-3">

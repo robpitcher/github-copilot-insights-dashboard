@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DataSourceBanner } from "@/components/layout/report-filters";
 
 /* ── Metric definitions ── */
 
@@ -1158,6 +1159,7 @@ export default function MetricsInfoPage() {
           Complete list of all metrics, how they are calculated, and their data sources
         </p>
       </div>
+      <DataSourceBanner sourceLabel="All synced data sources (user-level + org-level + billing)" />
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
