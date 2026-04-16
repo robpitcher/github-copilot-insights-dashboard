@@ -9,6 +9,8 @@ cd app
 npm install              # Install dependencies
 npm run dev              # Development server (port 3000)
 npm run build            # Production build (validates types + lint)
+npm run test             # Run unit tests (vitest)
+npm run test:watch       # Run tests in watch mode
 npm run db:generate      # Generate Drizzle migrations after schema changes
 npm run db:migrate       # Run pending migrations
 ```
@@ -26,9 +28,11 @@ azd up                   # Full provision + deploy (first time)
 app/                      # Next.js 16 application
   src/
     app/                  # Pages (App Router) + API routes (/api/*)
+      enterprise-teams/   # Enterprise Teams page
+      settings/app-info/  # Application Info settings page
     components/           # Reusable React components
       layout/             # Sidebar, breadcrumb, report filters
-      ui/                 # DataTable and shared UI
+      ui/                 # DataTable, EmptyState, and shared UI
     lib/
       db/                 # Drizzle ORM: schema, connection, settings
       etl/                # ETL pipeline: ingest + transform
@@ -54,8 +58,10 @@ docs/                     # Architecture documentation (Mermaid diagrams)
 - Chart.js 4.5 via react-chartjs-2 5.3 for visualizations
 - Tailwind CSS 4.2 (no custom CSS files)
 - Zod 4.3 for all input validation
+- Vitest for unit testing
 - Azure Container Apps, Key Vault, ACR, Application Insights
 - GitHub Copilot Usage Metrics API v2026-03-10
+- GitHub Enterprise Teams API v2026-03-10
 
 ## Code style
 
@@ -84,11 +90,15 @@ console.error("Failed to fetch data:", error);
 - Wrap handlers in try-catch, return `{ error: "Internal server error" }` on failure
 - Use Drizzle ORM for all queries — no raw SQL strings
 - Never leak stack traces or internal details in error responses
+- Enterprise Teams API: `/api/enterprise-teams`, `/api/enterprise-teams/[teamId]/members`, `/api/enterprise-teams/sync`
+- Health check: `/api/health`
+- App info: `/api/settings/app-info`
 
 ## Database
 
-- Star schema: dimension tables (`dim_user`, `dim_feature`, `dim_model`, `dim_language`) + fact tables
+- Star schema: dimension tables (`dim_user`, `dim_feature`, `dim_model`, `dim_language`, `dim_enterprise_team`) + fact tables
 - `dim_user` follows SCD Type 2 with `effective_from`, `effective_to`, `is_current`
+- `dim_enterprise_team` + `dim_enterprise_team_member` for enterprise team data
 - Schema defined in `app/src/lib/db/schema.ts`
 - After schema changes: run `cd app && npm run db:generate`, commit the migration file
 - Migrations run automatically on app startup via `instrumentation.ts`
@@ -97,10 +107,11 @@ console.error("Failed to fetch data:", error);
 ## Components
 
 - Server Components by default — add `"use client"` only when state/effects are needed
-- Dashboard pages: `ReportFilters` for date range + user filter, `DataTable` for tabular data
+- Dashboard pages: `ReportFilters` for date range + user + org + team filter, `DataTable` for tabular data
 - Charts: `react-chartjs-2` wrappers (`Line`, `Bar`, `Doughnut`)
 - Use `useChartOptions()` from `@/lib/theme/chart-theme` for theme-aware Chart.js options
 - Use `useTranslation()` from `@/lib/i18n/locale-provider` for i18n strings
+- `EmptyState` component handles: not configured, not synced, no data, no results for filters
 
 ## Theme (Dark Mode)
 
@@ -122,6 +133,15 @@ console.error("Failed to fetch data:", error);
 - All page titles, subtitles, KPI labels, chart titles, and table headers use `t()` calls
 - TypeScript type safety: `TranslationKeys` type exported from `en.ts`
 
+## Enterprise Teams
+
+- Enterprise teams are synced from the GitHub Enterprise Teams API (`/enterprises/{slug}/teams`)
+- Team members are fetched from `/enterprises/{slug}/teams/{team_slug}/members`
+- Requires `read:enterprise` scope on the PAT
+- Teams are stored in `dim_enterprise_team`, members in `dim_enterprise_team_member`
+- Teams can be used as filters on all reports — resolves to member user IDs
+- Sync is triggered manually via the Enterprise Teams page or during data ingest
+
 ## Docker
 
 Next.js standalone output mode — the Dockerfile runner stage must explicitly copy:
@@ -134,7 +154,11 @@ Next.js standalone output mode — the Dockerfile runner stage must explicitly c
 - No raw SQL — Drizzle ORM parameterized queries only
 - Admin password gate on Settings page
 - Managed Identity for Azure resource access
+- Required PAT scopes: `manage_billing:copilot (read)`, `read:org`, `read:enterprise`, `manage_billing:enterprise (read)`
 
 ## Testing
 
-Run `cd app && npm run build` before any PR — this validates TypeScript types and linting.
+- Unit tests: `cd app && npm run test` (vitest)
+- Build validation: `cd app && npm run build` (validates TypeScript types + lint)
+- Test files: `src/**/*.test.ts` and `src/**/*.test.tsx`
+- Tests cover: transform functions, NDJSON parsing, utility functions
