@@ -287,7 +287,9 @@ async function loadRecords(
   }
 
   // Store raw JSON with content hash
-  log("Storing raw JSON records…");
+  const rawStartTime = Date.now();
+  log(`Storing raw JSON records (${toProcess.length} records)…`);
+  let rawStored = 0;
   for (const { record, hash } of toProcess) {
     await db
       .insert(rawCopilotUsage)
@@ -306,11 +308,16 @@ async function loadRecords(
           ingestedAt: sql`now()`,
         },
       });
+    rawStored++;
   }
   log(`Raw JSON stored for ${toProcess.length} records`);
+  const rawDuration = ((Date.now() - rawStartTime) / 1000).toFixed(1);
+  const avgMsPerRecord = (parseFloat(rawDuration) / (rawStored || 1) * 1000).toFixed(0);
+  log(`Raw JSON storage complete: ${rawStored} records in ${rawDuration}s (avg ${avgMsPerRecord}ms/record)`);
 
   // Load fact tables
   log("Loading fact tables…");
+  const factStartTime = Date.now();
   let inserted = 0;
 
   for (const { record } of toProcess) {
@@ -468,7 +475,8 @@ async function loadRecords(
     inserted++;
 
     if (inserted % 50 === 0) {
-      log(`Progress: ${inserted}/${toProcess.length} records processed`);
+      const elapsed = ((Date.now() - factStartTime) / 1000).toFixed(1);
+      log(`Progress: ${inserted}/${toProcess.length} records processed (${elapsed}s elapsed)`);
     }
   }
 

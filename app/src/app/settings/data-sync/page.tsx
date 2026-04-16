@@ -133,6 +133,7 @@ export default function DataSyncPage() {
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Sync interval state
   const [isCustomInterval, setIsCustomInterval] = useState(false);
@@ -554,8 +555,11 @@ export default function DataSyncPage() {
     setApiSyncing(true);
     setIngestLogs([]);
 
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
-      const res = await fetch("/api/ingest/stream", { method: "POST" });
+      const res = await fetch("/api/ingest/stream", { method: "POST", signal: controller.signal });
       if (!res.ok) {
         const err = await res.json();
         showMessage("error", err.error ?? "Ingestion failed");
@@ -563,12 +567,27 @@ export default function DataSyncPage() {
         return;
       }
       await readSSEStream(res);
-    } catch {
-      showMessage("error", "Network error during ingestion");
-      setIngestLogs((prev) => [...prev, "✗ Network error"]);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        // User clicked Cancel — messaging already handled by handleCancel
+        setIngestLogs((prev) => [...prev, "⏹ Fetch aborted"]);
+      } else {
+        showMessage("error", "Network error during ingestion");
+        setIngestLogs((prev) => [...prev, "✗ Network error"]);
+      }
     } finally {
+      abortControllerRef.current = null;
       setApiSyncing(false);
       fetchData(); // refresh history
+    }
+  };
+
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIngestLogs((prev) => [...prev, "⚠ Import cancelled by user"]);
+      showMessage("error", "Import cancelled");
     }
   };
 
@@ -909,14 +928,26 @@ export default function DataSyncPage() {
               <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
                 One-time pull of the latest metrics from the GitHub API.
               </p>
-              <button
-                onClick={() => setShowConfirm(true)}
-                disabled={isBusy || !isConfigured || !hasSlug}
-                className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-xs hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {apiSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-                {apiSyncing ? "Syncing…" : "Pull from API"}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowConfirm(true)}
+                  disabled={isBusy || !isConfigured || !hasSlug}
+                  className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-xs hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {apiSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                  {apiSyncing ? "Syncing…" : "Pull from API"}
+                </button>
+                {apiSyncing && (
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="flex items-center gap-1.5 rounded-md border border-red-300 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-100 dark:border-red-600 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50"
+                  >
+                    <Square className="h-3.5 w-3.5" />
+                    Cancel Import
+                  </button>
+                )}
+              </div>
               {!isConfigured && (
                 <p className="mt-2 text-xs text-amber-600">
                   Configure a GitHub token in the Configuration tab first.

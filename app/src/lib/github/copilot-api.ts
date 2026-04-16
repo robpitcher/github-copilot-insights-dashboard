@@ -163,10 +163,19 @@ async function fetchWithRetry(
       return response;
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
+      const isNetworkError = lastError.message.includes("fetch failed") || 
+        lastError.message.includes("ECONNREFUSED") ||
+        lastError.message.includes("ECONNRESET") ||
+        lastError.message.includes("ETIMEDOUT") ||
+        lastError.message.includes("network") ||
+        lastError.message.includes("socket");
       if (attempt < retries - 1) {
-        const waitMs = INITIAL_BACKOFF_MS * Math.pow(2, attempt);
+        // Use longer backoff for network errors
+        const baseMs = isNetworkError ? INITIAL_BACKOFF_MS * 2 : INITIAL_BACKOFF_MS;
+        const waitMs = baseMs * Math.pow(2, attempt);
         console.warn(
-          `Request failed: ${lastError.message}. Retrying in ${waitMs}ms (${attempt + 1}/${retries})`
+          `Request failed (${isNetworkError ? "network error" : "error"}): ${lastError.message}. ` +
+          `Retrying in ${waitMs}ms (${attempt + 1}/${retries})`
         );
         await sleep(waitMs);
       }
