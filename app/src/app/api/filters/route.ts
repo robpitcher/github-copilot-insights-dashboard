@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { dimUser, dimOrg } from "@/lib/db/schema";
+import { dimUser, dimOrg, dimEnterpriseTeam, dimEnterpriseTeamMember } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { getGitHubConfig } from "@/lib/db/settings";
 import { resolveDisplayNames, formatUserLabel } from "@/lib/github/resolve-display-names";
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const [users, teams, orgs] = await Promise.all([
+    const [users, teams, orgs, enterpriseTeams] = await Promise.all([
       // Distinct users from dimUser (current only)
       db
         .select({
@@ -38,6 +38,26 @@ export async function GET() {
         })
         .from(dimOrg)
         .orderBy(dimOrg.orgName),
+
+      // Enterprise teams with member count
+      db
+        .select({
+          teamId: dimEnterpriseTeam.teamId,
+          teamName: dimEnterpriseTeam.teamName,
+          teamSlug: dimEnterpriseTeam.teamSlug,
+          memberCount: sql<number>`count(${dimEnterpriseTeamMember.id})`.as("member_count"),
+        })
+        .from(dimEnterpriseTeam)
+        .leftJoin(
+          dimEnterpriseTeamMember,
+          eq(dimEnterpriseTeam.teamId, dimEnterpriseTeamMember.teamId),
+        )
+        .groupBy(
+          dimEnterpriseTeam.teamId,
+          dimEnterpriseTeam.teamName,
+          dimEnterpriseTeam.teamSlug,
+        )
+        .orderBy(dimEnterpriseTeam.teamName),
     ]);
 
     // Resolve display names for users
@@ -55,6 +75,12 @@ export async function GET() {
       })),
       teams: teams.filter((t) => t.teamName).map((t) => t.teamName),
       orgs: orgs.map((o) => ({ id: o.orgId, name: o.orgName })),
+      enterpriseTeams: enterpriseTeams.map((t) => ({
+        id: t.teamId,
+        name: t.teamName,
+        slug: t.teamSlug,
+        memberCount: Number(t.memberCount),
+      })),
     });
   } catch (err) {
     console.error("Filters API error:", err);
