@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { getGitHubConfig } from "@/lib/db/settings";
 import { syncEnterpriseTeams } from "@/lib/etl/enterprise-teams";
-import { safeErrorMessage } from "@/lib/auth";
+import { adminErrorMessage } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +59,8 @@ export async function POST(request: NextRequest) {
 
         send("done", JSON.stringify(result));
       } catch (err) {
-        send("error", safeErrorMessage(err, "Enterprise teams sync failed"));
+        console.error("Enterprise teams sync failed:", err);
+        send("error", adminErrorMessage(err, "Enterprise teams sync failed"));
       } finally {
         request.signal.removeEventListener("abort", abortHandler);
         try {

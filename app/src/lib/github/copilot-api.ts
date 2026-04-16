@@ -20,6 +20,17 @@ const API_VERSION = "2026-03-10";
 const MAX_RETRIES = 5;
 const INITIAL_BACKOFF_MS = 1000;
 
+/**
+ * Thrown for HTTP 4xx responses that should NOT be retried
+ * (401, 403, 404, 422, etc.) — retrying will never succeed.
+ */
+class NonRetryableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NonRetryableError";
+  }
+}
+
 interface FetchOptions {
   enterpriseSlug: string;
   token: string;
@@ -140,29 +151,37 @@ async function fetchWithRetry(
       }
 
       if (!response.ok) {
+        const body = await response.text().catch(() => "");
         if (response.status === 403) {
-          const body = await response.text().catch(() => "");
-          throw new Error(
-            `GitHub API returned 403 Forbidden. Your Personal Access Token (PAT) may not have the required scopes. ` +
-            `Please ensure it has: manage_billing:copilot (read) or manage_billing:enterprise (read). ` +
+          throw new NonRetryableError(
+            `GitHub API returned 403 Forbidden for ${url}. Your Personal Access Token (PAT) may not have the required scopes. ` +
+            `Please ensure it has: manage_billing:copilot (read), manage_billing:enterprise (read), or read:enterprise. ` +
             `You can update token scopes at https://github.com/settings/tokens. Details: ${body}`
           );
         }
         if (response.status === 404) {
-          throw new Error(
-            `GitHub API returned 404 Not Found. This may indicate the enterprise slug is incorrect ` +
-            `or your PAT does not have access to this enterprise. Please verify the enterprise slug ` +
-            `in Settings and ensure your token has the required scopes.`
+          throw new NonRetryableError(
+            `GitHub API returned 404 Not Found for ${url}. This may indicate the enterprise slug or team slug is incorrect ` +
+            `or your PAT does not have access to this resource. Details: ${body}`
+          );
+        }
+        if (response.status >= 400 && response.status < 500) {
+          throw new NonRetryableError(
+            `GitHub API error ${response.status} ${response.statusText} for ${url}: ${body}`
           );
         }
         throw new Error(
-          `GitHub API error: ${response.status} ${response.statusText}`
+          `GitHub API error: ${response.status} ${response.statusText} for ${url}: ${body}`
         );
       }
 
       return response;
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
+      // Do not retry on 4xx client errors — they will never succeed on retry.
+      if (lastError instanceof NonRetryableError) {
+        throw lastError;
+      }
       const isNetworkError = lastError.message.includes("fetch failed") || 
         lastError.message.includes("ECONNREFUSED") ||
         lastError.message.includes("ECONNRESET") ||
@@ -597,12 +616,18 @@ export async function listEnterpriseTeams(opts: {
 
 /**
  * Lists all members of an enterprise team (paginated).
- * Docs: https://docs.github.com/en/enterprise-cloud@latest/rest/enterprise-teams/enterprise-team-members
+ * Docs: https://docs.github.com/en/enterprise-cloud@latest/rest/enterprise-teams/enterprise-team-members?apiVersion=2026-03-10
  * Endpoint: GET /enterprises/{enterprise}/teams/{enterprise-team}/memberships
+ *
+ * The {enterprise-team} path parameter accepts either the team slug (which
+ * carries an `ent:` prefix, e.g. `ent:my-team`) OR the numeric team ID.
+ * We prefer the team ID when available since it avoids URL-encoding
+ * ambiguity around the `:` character and is cheaper to match server-side.
  */
 export async function listEnterpriseTeamMembers(opts: {
   enterpriseSlug: string;
   teamSlug: string;
+  teamId?: number;
   token: string;
   onLog?: (msg: string) => void;
 }): Promise<{ members: EnterpriseTeamMember[]; apiRequestCount: number }> {
@@ -612,10 +637,16 @@ export async function listEnterpriseTeamMembers(opts: {
   const perPage = 100;
   const log = opts.onLog ?? (() => {});
 
-  log(`Fetching members for enterprise team "${opts.teamSlug}"…`);
+  // Prefer team ID; fall back to slug.
+  const teamRef =
+    typeof opts.teamId === "number"
+      ? String(opts.teamId)
+      : encodeURIComponent(opts.teamSlug);
+
+  log(`Fetching members for enterprise team "${opts.teamSlug}" (ref=${teamRef})…`);
 
   while (true) {
-    const url = `${GITHUB_API_BASE}/enterprises/${encodeURIComponent(opts.enterpriseSlug)}/teams/${encodeURIComponent(opts.teamSlug)}/memberships?per_page=${perPage}&page=${page}`;
+    const url = `${GITHUB_API_BASE}/enterprises/${encodeURIComponent(opts.enterpriseSlug)}/teams/${teamRef}/memberships?per_page=${perPage}&page=${page}`;
     const response = await fetchWithRetry(url, opts.token, MAX_RETRIES);
     apiRequestCount++;
 

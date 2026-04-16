@@ -182,3 +182,13 @@ export function safeErrorMessage(err: unknown, fallback: string): string {
   }
   return fallback;
 }
+
+/**
+ * Return the real error message, suitable for admin-gated UIs where users
+ * need diagnostic detail (e.g. Settings → Data Sync). Do NOT use for
+ * endpoints reachable by non-admin users.
+ */
+export function adminErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message) return err.message;
+  return fallback;
+}

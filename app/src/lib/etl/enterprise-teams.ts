@@ -19,7 +19,7 @@ import {
   listEnterpriseTeams,
   listEnterpriseTeamMembers,
 } from "@/lib/github/copilot-api";
-import { safeErrorMessage } from "@/lib/auth";
+import { adminErrorMessage } from "@/lib/auth";
 
 export interface SyncEnterpriseTeamsOptions {
   enterpriseSlug: string;
@@ -107,6 +107,7 @@ export async function syncEnterpriseTeams(
         await listEnterpriseTeamMembers({
           enterpriseSlug: opts.enterpriseSlug,
           teamSlug: team.slug,
+          teamId: team.id,
           token: opts.token,
           onLog: send,
         });
@@ -154,8 +155,9 @@ export async function syncEnterpriseTeams(
       ingestionLogId: logEntry.id,
     };
   } catch (err) {
-    const message = safeErrorMessage(err, "Enterprise teams sync failed");
+    const message = adminErrorMessage(err, "Enterprise teams sync failed");
     send(`ERROR: ${message}`);
+    console.error("Enterprise teams sync failed:", err);
 
     await db
       .update(ingestionLog)
