@@ -598,6 +598,7 @@ export async function listEnterpriseTeams(opts: {
 /**
  * Lists all members of an enterprise team (paginated).
  * Docs: https://docs.github.com/en/enterprise-cloud@latest/rest/enterprise-teams/enterprise-team-members
+ * Endpoint: GET /enterprises/{enterprise}/teams/{enterprise-team}/memberships
  */
 export async function listEnterpriseTeamMembers(opts: {
   enterpriseSlug: string;
@@ -614,7 +615,7 @@ export async function listEnterpriseTeamMembers(opts: {
   log(`Fetching members for enterprise team "${opts.teamSlug}"…`);
 
   while (true) {
-    const url = `${GITHUB_API_BASE}/enterprises/${encodeURIComponent(opts.enterpriseSlug)}/teams/${encodeURIComponent(opts.teamSlug)}/members?per_page=${perPage}&page=${page}`;
+    const url = `${GITHUB_API_BASE}/enterprises/${encodeURIComponent(opts.enterpriseSlug)}/teams/${encodeURIComponent(opts.teamSlug)}/memberships?per_page=${perPage}&page=${page}`;
     const response = await fetchWithRetry(url, opts.token, MAX_RETRIES);
     apiRequestCount++;
 

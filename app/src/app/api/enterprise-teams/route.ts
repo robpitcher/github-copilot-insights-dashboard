@@ -33,7 +33,11 @@ export async function GET() {
 
     return NextResponse.json({
       teams: teams.map((t) => ({
-        ...t,
+        id: t.teamId,
+        githubTeamId: t.githubTeamId,
+        name: t.teamName,
+        slug: t.teamSlug,
+        description: t.description,
         memberCount: Number(t.memberCount),
       })),
     });
