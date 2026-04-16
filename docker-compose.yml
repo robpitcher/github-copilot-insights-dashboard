@@ -1,19 +1,20 @@
 services:
   app:
     build:
-      context: ..
-      dockerfile: .devcontainer/Dockerfile
-    volumes:
-      - ..:/workspaces/${LOCAL_WORKSPACE_FOLDER_BASENAME:-ghcp-dashboard}:cached
-    command: sleep infinity
+      context: ./app
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/copilot_insights
+      ADMIN_PASSWORD: changeme123
       NEXT_TELEMETRY_DISABLED: "1"
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
     networks:
-      - devnet
+      - appnet
 
   db:
     image: postgres:18
@@ -24,7 +25,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: copilot_insights
-    # Dev config: durability off for speed; tuned for ETL bulk-import from GitHub API
+    # Durability off for dev/test speed; tuned for ETL bulk-import from GitHub API
     command: >
       postgres
         -c fsync=off
@@ -51,10 +52,10 @@ services:
       start_period: 10s
     shm_size: 512m
     networks:
-      - devnet
+      - appnet
 
 networks:
-  devnet:
+  appnet:
     driver: bridge
 
 volumes:
