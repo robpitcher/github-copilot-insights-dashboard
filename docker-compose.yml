@@ -7,8 +7,8 @@ services:
       - "3000:3000"
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/copilot_insights
-      ADMIN_PASSWORD: changeme123
       NEXT_TELEMETRY_DISABLED: "1"
+      - ADMIN_PASSWORD
     depends_on:
       db:
         condition: service_healthy
