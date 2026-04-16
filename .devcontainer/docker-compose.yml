@@ -12,6 +12,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - devnet
 
   db:
     image: postgres:18
@@ -22,12 +24,31 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: copilot_insights
+    # Minimal dev-optimised config: durability guarantees traded for speed/reliability in codespaces
+    command: >
+      postgres
+        -c fsync=off
+        -c synchronous_commit=off
+        -c full_page_writes=off
+        -c shared_buffers=128MB
+        -c work_mem=4MB
+        -c max_connections=50
+        -c wal_level=minimal
+        -c archive_mode=off
+        -c log_min_duration_statement=1000
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d copilot_insights"]
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 10s
     shm_size: 256m
+    networks:
+      - devnet
+
+networks:
+  devnet:
+    driver: bridge
 
 volumes:
   pgdata:
