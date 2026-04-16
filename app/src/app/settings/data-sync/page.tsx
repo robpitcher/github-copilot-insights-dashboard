@@ -769,7 +769,7 @@ export default function DataSyncPage() {
           <p className="text-sm font-medium text-blue-900 dark:text-blue-200">How data sync works</p>
           <p className="mt-1 text-xs leading-relaxed text-blue-700 dark:text-blue-400">
             The GitHub Copilot Metrics API refreshes data approximately once every 24 hours (end of UTC day).
-            You can schedule automatic syncs (including enterprise teams), trigger a one-time pull, or upload an NDJSON metrics export.
+            You can schedule automatic syncs (including PR metrics, Copilot Autofix, and enterprise teams), trigger a one-time pull, or upload an NDJSON metrics export.
             Duplicate records are automatically detected and skipped.
           </p>
         </div>
@@ -1076,7 +1076,7 @@ export default function DataSyncPage() {
                 </button>
               </div>
               <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-                Automatically pull fresh usage metrics and enterprise teams data at a recurring interval.
+                Automatically pull fresh usage metrics, pull request &amp; Copilot Autofix data, and enterprise teams at a recurring interval.
               </p>
               <div className="flex items-start gap-2">
                 <div ref={dropdownRef} className="relative flex-1">

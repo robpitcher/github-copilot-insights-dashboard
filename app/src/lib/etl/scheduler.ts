@@ -5,6 +5,8 @@
  * for status at runtime via API routes — no app restart needed.
  */
 
+import type { SyncScope } from "@/lib/db/settings";
+
 let timer: ReturnType<typeof setTimeout> | null = null;
 let schedulerEnabled = false;
 let intervalMinutes = 1440; // default 24h
@@ -26,7 +28,7 @@ async function runIngestion() {
     const { db } = await import("@/lib/db");
     const { ingestionLog } = await import("@/lib/db/schema");
     const { token, enterpriseSlug } = await getGitHubConfig();
-    const { scopes, orgLogins } = await getSyncScopeConfig();
+    const { scopes: configuredScopes, orgLogins } = await getSyncScopeConfig();
     lastRunAt = new Date();
     if (!token || !enterpriseSlug) {
       console.warn("Scheduled ingest skipped — GitHub token or slug not configured");
@@ -41,6 +43,14 @@ async function runIngestion() {
       });
       return;
     }
+
+    // Ensure org-level data is always fetched so PR metrics and Copilot Autofix
+    // data (from org aggregate endpoint) are included in every scheduled sync.
+    const hasOrgScope = configuredScopes.includes("all_orgs") || configuredScopes.includes("organization");
+    const scopes: SyncScope[] = hasOrgScope
+      ? configuredScopes
+      : [...configuredScopes, "all_orgs"];
+
     const orgLabel = scopes.includes("organization") ? `, orgs: ${orgLogins.join(", ")}` : "";
     console.info(`Scheduled ETL ingestion started (scopes: ${scopes.join("+")}${orgLabel})`);
     const result = await ingestCopilotUsage({ token, enterpriseSlug, source: "scheduled", scopes, orgLogins });
