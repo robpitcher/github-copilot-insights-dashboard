@@ -12,11 +12,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - default
     deploy:
       resources:
-        limits:
-          cpus: "4"
-          memory: 6g
         reservations:
           cpus: "2"
           memory: 3g
@@ -25,25 +24,45 @@ services:
     image: postgres:18
     restart: unless-stopped
     volumes:
-      - pgdata:/var/lib/postgresql
+      - pgdata:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: copilot_insights
+      # PostgreSQL tuning for dev/import workloads
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    command:
+      - "postgres"
+      - "-c" 
+      - "shared_buffers=256MB"
+      - "-c"
+      - "work_mem=64MB"
+      - "-c"
+      - "maintenance_work_mem=256MB"
+      - "-c"
+      - "max_connections=100"
+      - "-c"
+      - "statement_timeout=300000"
+      - "-c"
+      - "idle_in_transaction_session_timeout=300000"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
-      timeout: 3s
-      retries: 5
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+    networks:
+      - default
     deploy:
       resources:
-        limits:
-          cpus: "2"
-          memory: 2g
         reservations:
           cpus: "1"
           memory: 1g
-    shm_size: 256m
+    shm_size: 512m
+
+networks:
+  default:
+    driver: bridge
 
 volumes:
   pgdata:
