@@ -1154,7 +1154,7 @@ export default function MetricsInfoPage() {
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">GitHub Copilot Metrics Reference</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Complete list of all metrics, how they are calculated, and their data sources
         </p>
       </div>

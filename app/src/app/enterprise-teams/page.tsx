@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "@/lib/i18n/locale-provider";
 import { useChartOptions } from "@/lib/theme/chart-theme";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { UsersRound, RefreshCw, ChevronRight } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
+import { UsersRound, RefreshCw, ChevronRight, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /* ── Types ── */
@@ -118,31 +119,37 @@ export default function EnterpriseTeamsPage() {
   /* ── Render ── */
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-6">
+      <PageHeader
+        title={t("teams.title")}
+        subtitle={t("teams.subtitle")}
+        actions={
+          <button
+            type="button"
+            disabled={syncing}
+            onClick={handleSync}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium shadow-xs transition-colors",
+              syncing
+                ? "cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500"
+                : "bg-blue-600 text-white hover:bg-blue-700",
+            )}
+          >
+            <RefreshCw className={cn("h-4 w-4", syncing && "animate-spin")} />
+            {syncing ? t("teams.syncing") : t("teams.syncTeams")}
+          </button>
+        }
+      />
+
+      {/* About this page */}
+      <div className="flex items-start gap-3 rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+        <Info className="mt-0.5 h-4 w-4 shrink-0" />
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {t("teams.title")}
-          </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {t("teams.subtitle")}
+          <p className="font-medium">{t("teams.aboutTitle")}</p>
+          <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">
+            {t("teams.aboutBody")}
           </p>
         </div>
-        <button
-          type="button"
-          disabled={syncing}
-          onClick={handleSync}
-          className={cn(
-            "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium shadow-xs transition-colors",
-            syncing
-              ? "cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500"
-              : "bg-blue-600 text-white hover:bg-blue-700",
-          )}
-        >
-          <RefreshCw className={cn("h-4 w-4", syncing && "animate-spin")} />
-          {syncing ? t("teams.syncing") : t("teams.syncTeams")}
-        </button>
       </div>
 
       {/* Summary stats */}

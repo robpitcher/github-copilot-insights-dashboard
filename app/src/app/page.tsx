@@ -5,10 +5,12 @@ import Image from "next/image";
 import {
   BarChart3,
   Bot,
+  BookOpen,
   CreditCard,
   GitPullRequest,
   Sparkles,
   Users,
+  UsersRound,
   ArrowRight,
   Code,
   Terminal,
@@ -75,6 +77,20 @@ export default function LandingPage() {
       href: "/users",
       icon: Users,
       color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 dark:text-indigo-400",
+    },
+    {
+      title: t("nav.enterpriseTeams"),
+      description: t("landing.enterpriseTeamsDesc"),
+      href: "/enterprise-teams",
+      icon: UsersRound,
+      color: "text-pink-600 bg-pink-50 dark:bg-pink-900/30 dark:text-pink-400",
+    },
+    {
+      title: t("nav.metricsReference"),
+      description: t("landing.metricsReferenceDesc"),
+      href: "/reference",
+      icon: BookOpen,
+      color: "text-gray-600 bg-gray-100 dark:bg-gray-700 dark:text-gray-300",
     },
   ];
 

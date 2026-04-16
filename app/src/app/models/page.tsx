@@ -10,7 +10,7 @@ import {
   Legend,
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
-import { Breadcrumb } from "@/components/layout/breadcrumb";
+import { PageHeader } from "@/components/layout/page-header";
 import { DataSourceBanner, formatDateRangeLabel } from "@/components/layout/report-filters";
 import { useChartOptions } from "@/lib/theme/chart-theme";
 import { useTranslation } from "@/lib/i18n/locale-provider";
@@ -175,14 +175,15 @@ export default function ModelsPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <ConfigurationBanner />
-      <div>
-        <Breadcrumb items={[{ label: "Models", href: "/models" }]} />
-        <h1 className="mt-1 text-xl font-bold text-gray-900 dark:text-gray-100">{t("models.title")}</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Available Copilot models and their enablement status.
-          Usage data: {formatDateRangeLabel(data.period.start, data.period.end)}.
-        </p>
-      </div>
+      <PageHeader
+        title={t("models.title")}
+        subtitle={
+          <>
+            Available Copilot models and their enablement status.
+            Usage data: {formatDateRangeLabel(data.period.start, data.period.end)}.
+          </>
+        }
+      />
       <DataSourceBanner />
 
       {/* ── KPI Cards ── */}

@@ -555,12 +555,16 @@ export const en = {
     premiumRequestsDesc: "Monitor premium model request consumption and spending across users and teams.",
     usersTitle: "Users",
     usersDesc: "Explore individual user activity, engagement patterns, and feature adoption.",
+    enterpriseTeamsDesc: "View enterprise teams and their members. Filter every report by team.",
+    metricsReferenceDesc: "Complete reference of every metric on this dashboard, how it is calculated, and its data source.",
     poweredBy: "Powered by the GitHub Copilot Usage Metrics API",
   },
 
   teams: {
     title: "Enterprise Teams",
     subtitle: "Manage and view enterprise team members",
+    aboutTitle: "About this page",
+    aboutBody: "This page lists enterprise teams synced from GitHub and their members. Teams power the \"Team\" filter available on every report — select a team in a report and it resolves to that team's members. Run Sync Teams (or enable it on Settings → Data Sync) to pull the latest team membership from GitHub.",
     syncTeams: "Sync Teams",
     syncing: "Syncing…",
     members: "Members",

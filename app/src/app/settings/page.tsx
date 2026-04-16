@@ -349,6 +349,18 @@ export default function ConfigurationPage() {
                 <td className="px-3 py-2"><code className="rounded-sm bg-gray-100 px-1 text-gray-700 dark:bg-gray-700 dark:text-gray-300">read:org</code></td>
               </tr>
               <tr>
+                <td className="px-3 py-2 font-mono text-gray-700 dark:text-gray-300">GET /enterprises/{"{slug}"}/teams</td>
+                <td className="px-3 py-2 text-gray-500 dark:text-gray-400">List enterprise teams (for team filter)</td>
+                <td className="px-3 py-2 text-gray-500 dark:text-gray-400">2026-03-10</td>
+                <td className="px-3 py-2"><code className="rounded-sm bg-gray-100 px-1 text-gray-700 dark:bg-gray-700 dark:text-gray-300">read:enterprise</code></td>
+              </tr>
+              <tr>
+                <td className="px-3 py-2 font-mono text-gray-700 dark:text-gray-300">GET /enterprises/{"{slug}"}/teams/{"{team}"}/memberships</td>
+                <td className="px-3 py-2 text-gray-500 dark:text-gray-400">List enterprise team members (for team filter)</td>
+                <td className="px-3 py-2 text-gray-500 dark:text-gray-400">2026-03-10</td>
+                <td className="px-3 py-2"><code className="rounded-sm bg-gray-100 px-1 text-gray-700 dark:bg-gray-700 dark:text-gray-300">read:enterprise</code></td>
+              </tr>
+              <tr>
                 <td className="px-3 py-2 font-mono text-gray-700 dark:text-gray-300">GET /users/{"{login}"}</td>
                 <td className="px-3 py-2 text-gray-500 dark:text-gray-400">Resolve user display names (best-effort)</td>
                 <td className="px-3 py-2 text-gray-500 dark:text-gray-400">2026-03-10</td>

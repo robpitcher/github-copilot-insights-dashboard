@@ -19,7 +19,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { usePdfExport } from "@/components/ui/pdf-export";
 import { ReportFilters, DataSourceBanner } from "@/components/layout/report-filters";
 import type { FilterState, DataRange } from "@/components/layout/report-filters";
-import { Breadcrumb } from "@/components/layout/breadcrumb";
+import { PageHeader } from "@/components/layout/page-header";
 import { useTranslation } from "@/lib/i18n/locale-provider";
 import { useChartOptions } from "@/lib/theme/chart-theme";
 import { ConfigurationBanner } from "@/components/layout/configuration-banner";
@@ -237,17 +237,16 @@ export default function PullRequestsPage() {
   return (
     <div ref={reportRef} className="space-y-6">
       <ConfigurationBanner />
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <Breadcrumb items={[{ label: t("nav.pullRequests"), href: "/pull-requests" }]} />
-          <h1 className="mt-1 text-xl font-bold text-gray-900 dark:text-gray-100">{t("pullRequests.title")}</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{t("pullRequests.subtitle")}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <PdfButton />
-          <ReportFilters onApply={fetchData} onDataRange={setDataRange} showUserFilter={false} sourceLabel="Organization Aggregate" />
-        </div>
-      </div>
+      <PageHeader
+        title={t("pullRequests.title")}
+        subtitle={t("pullRequests.subtitle")}
+        actions={
+          <>
+            <PdfButton />
+            <ReportFilters onApply={fetchData} onDataRange={setDataRange} showUserFilter={false} sourceLabel="Organization Aggregate" />
+          </>
+        }
+      />
       <DataSourceBanner sourceLabel="Organization aggregate data (includes pull request metrics)" />
 
       {loading ? (

@@ -5,7 +5,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { usePdfExport } from "@/components/ui/pdf-export";
 import { useTranslation } from "@/lib/i18n/locale-provider";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { Breadcrumb } from "@/components/layout/breadcrumb";
+import { PageHeader } from "@/components/layout/page-header";
 import { DataSourceBanner } from "@/components/layout/report-filters";
 import type { DataRange } from "@/components/layout/report-filters";
 import { ChevronDown, ChevronUp, Filter } from "lucide-react";
@@ -423,16 +423,11 @@ export default function UsersPage() {
   return (
     <div ref={reportRef} className="space-y-6">
       <ConfigurationBanner />
-      <div className="flex items-start justify-between">
-        <div>
-          <Breadcrumb items={[{ label: "Users", href: "/users" }]} />
-          <h1 className="mt-1 text-xl font-bold text-gray-900 dark:text-gray-100">{t("users.title")}</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {t("users.subtitle")}
-          </p>
-        </div>
-        <PdfButton />
-      </div>
+      <PageHeader
+        title={t("users.title")}
+        subtitle={t("users.subtitle")}
+        actions={<PdfButton />}
+      />
       <DataSourceBanner sourceLabel="Synced usage data + live GitHub license API" />
 
       {loading ? (

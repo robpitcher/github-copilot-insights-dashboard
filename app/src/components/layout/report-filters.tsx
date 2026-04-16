@@ -84,7 +84,7 @@ export function ReportFilters({ onApply, onDataRange, defaultDays = 28, showUser
   const [startDate, setStartDate] = useState(daysAgoStr(defaultDays));
   const [endDate, setEndDate] = useState(todayStr());
   const [userId, setUserId] = useState("");
-  const [selectedOrgIds, setSelectedOrgIds] = useState<string[]>([]);
+  const [selectedOrgIds, setSelectedOrgIds] = useState<string[]>(["enterprise"]);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({ users: [], orgs: [], enterpriseTeams: [] });
   const [dataRange, setDataRange] = useState<DataRange | null>(null);
@@ -122,7 +122,7 @@ export function ReportFilters({ onApply, onDataRange, defaultDays = 28, showUser
           setEndDate(end);
           if (!didInit.current) {
             didInit.current = true;
-            onApply({ startDate: start, endDate: end, userId: "", orgId: "", teamId: "" });
+            onApply({ startDate: start, endDate: end, userId: "", orgId: "enterprise", teamId: "" });
           }
         } else if (!didInit.current) {
           didInit.current = true;

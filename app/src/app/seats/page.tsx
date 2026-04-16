@@ -17,6 +17,7 @@ import { usePdfExport } from "@/components/ui/pdf-export";
 import { useChartOptions } from "@/lib/theme/chart-theme";
 import { useTranslation } from "@/lib/i18n/locale-provider";
 import { ConfigurationBanner } from "@/components/layout/configuration-banner";
+import { PageHeader } from "@/components/layout/page-header";
 import { AlertTriangle, Settings } from "lucide-react";
 import Link from "next/link";
 
@@ -284,16 +285,11 @@ export default function BusinessValuePage() {
   return (
     <div ref={reportRef} className="space-y-6">
       <ConfigurationBanner />
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t("seats.title")}</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {t("seats.subtitle")}
-          </p>
-        </div>
-        <PdfButton />
-      </div>
+      <PageHeader
+        title={t("seats.title")}
+        subtitle={t("seats.subtitle")}
+        actions={<PdfButton />}
+      />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
