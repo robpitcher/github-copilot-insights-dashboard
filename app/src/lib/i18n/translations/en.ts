@@ -148,6 +148,8 @@ export const en = {
     modelUsagePerLanguageDesc: "Horizontal stacked bar — models by language",
     allModels: "All models",
     models: "Models:",
+    allChatModes: "All chat modes",
+    chatModes: "Modes:",
     allLanguages: "All languages",
     languages: "Languages:",
     ofTotal: "of {0} total",

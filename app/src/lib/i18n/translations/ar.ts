@@ -146,6 +146,8 @@ export const ar: TranslationKeys = {
     modelUsagePerLanguageDesc: "أشرطة أفقية مكدسة — النماذج حسب اللغة",
     allModels: "جميع النماذج",
     models: "النماذج:",
+    allChatModes: "جميع أوضاع الدردشة",
+    chatModes: "الأوضاع:",
     allLanguages: "جميع اللغات",
     languages: "اللغات:",
     ofTotal: "من {0} إجمالي",

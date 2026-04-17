@@ -104,7 +104,8 @@ export default function CopilotUsagePage() {
 
   // Multi-select chart filters
   const [modelPerDayFilter, setModelPerDayFilter] = useState<string[]>([]);
-  const [modelPerChatModeFilter, setModelPerChatModeFilter] = useState<string[]>([]);
+  const [modelPerChatModeModelFilter, setModelPerChatModeModelFilter] = useState<string[]>([]);
+  const [modelPerChatModeModeFilter, setModelPerChatModeModeFilter] = useState<string[]>([]);
   const [modelPerLangModelFilter, setModelPerLangModelFilter] = useState<string[]>([]);
   const [modelPerLangLangFilter, setModelPerLangLangFilter] = useState<string[]>([]);
 
@@ -271,20 +272,31 @@ export default function CopilotUsagePage() {
 
   const modelPerChatModeChart = useMemo(() => {
     if (!data) return null;
-    const allKeys = extractDimKeys(data.modelUsagePerChatMode).sort();
-    const keys = modelPerChatModeFilter.length > 0 ? allKeys.filter((k) => modelPerChatModeFilter.includes(k)) : allKeys;
+    const allModeKeys = extractDimKeys(data.modelUsagePerChatMode).sort();
+    const modeKeys = modelPerChatModeModeFilter.length > 0
+      ? allModeKeys.filter((k) => modelPerChatModeModeFilter.includes(k))
+      : allModeKeys;
+    // Filter models (rows) if model filter is applied
+    const filteredData = modelPerChatModeModelFilter.length > 0
+      ? data.modelUsagePerChatMode.filter((r) => modelPerChatModeModelFilter.includes(String(r.name)))
+      : data.modelUsagePerChatMode;
     return {
-      labels: data.modelUsagePerChatMode.map((r) => String(r.name)),
-      datasets: keys.map((k, i) => ({
+      labels: filteredData.map((r) => String(r.name)),
+      datasets: modeKeys.map((k, i) => ({
         label: k,
-        data: data.modelUsagePerChatMode.map((r) => Number(r[k]) || 0),
-        backgroundColor: COLORS[allKeys.indexOf(k) % COLORS.length],
+        data: filteredData.map((r) => Number(r[k]) || 0),
+        backgroundColor: COLORS[allModeKeys.indexOf(k) % COLORS.length],
       })),
     };
-  }, [data, modelPerChatModeFilter]);
+  }, [data, modelPerChatModeModelFilter, modelPerChatModeModeFilter]);
 
-  // Available model names for the per-chat-mode filter
-  const modelPerChatModeOptions = useMemo(() => {
+  // Available options for model×chat mode filters
+  const modelPerChatModeModelOptions = useMemo(() => {
+    if (!data) return [];
+    return data.modelUsagePerChatMode.map((r) => String(r.name)).sort();
+  }, [data]);
+
+  const modelPerChatModeModeOptions = useMemo(() => {
     if (!data) return [];
     return extractDimKeys(data.modelUsagePerChatMode).sort();
   }, [data]);
@@ -470,27 +482,36 @@ export default function CopilotUsagePage() {
             {modelPerDayChart && <div className="h-[350px]"><Line data={modelPerDayChart} options={stackedAreaOpts()} /></div>}
           </Card>
 
-          {/* Chat Model Usage + Model per Chat Mode */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <Card title={t("dashboard.chatModelUsage")} subtitle={t("dashboard.chatModelUsageDesc")}>
-              {chatModelDonut && <div className="h-[320px]"><Doughnut data={chatModelDonut} options={doughnutOpts} /></div>}
-            </Card>
-            <Card title={t("dashboard.modelUsagePerChatMode")} subtitle={t("dashboard.modelUsagePerChatModeDesc")}
-              headerRight={
+          {/* Chat Model Usage (donut) */}
+          <Card title={t("dashboard.chatModelUsage")} subtitle={t("dashboard.chatModelUsageDesc")}>
+            {chatModelDonut && <div className="mx-auto h-[320px] max-w-md"><Doughnut data={chatModelDonut} options={doughnutOpts} /></div>}
+          </Card>
+
+          {/* Model per Chat Mode (full-width, dual filter) */}
+          <Card title={t("dashboard.modelUsagePerChatMode")} subtitle={t("dashboard.modelUsagePerChatModeDesc")}
+            headerRight={
+              <div className="flex flex-wrap gap-2">
                 <MultiSelect
-                  options={modelPerChatModeOptions}
-                  selected={modelPerChatModeFilter}
-                  onChange={setModelPerChatModeFilter}
+                  options={modelPerChatModeModelOptions}
+                  selected={modelPerChatModeModelFilter}
+                  onChange={setModelPerChatModeModelFilter}
                   placeholder={t("dashboard.allModels")}
                   label={t("dashboard.models")}
                 />
-              }
-            >
-              {modelPerChatModeChart && (
-                <div style={{ height: horizontalBarHeight(modelPerChatModeChart.labels?.length ?? 0) }}><Bar data={modelPerChatModeChart} options={horizontalStackedOpts()} /></div>
-              )}
-            </Card>
-          </div>
+                <MultiSelect
+                  options={modelPerChatModeModeOptions}
+                  selected={modelPerChatModeModeFilter}
+                  onChange={setModelPerChatModeModeFilter}
+                  placeholder={t("dashboard.allChatModes")}
+                  label={t("dashboard.chatModes")}
+                />
+              </div>
+            }
+          >
+            {modelPerChatModeChart && (
+              <div style={{ height: horizontalBarHeight(modelPerChatModeChart.labels?.length ?? 0) }}><Bar data={modelPerChatModeChart} options={horizontalStackedOpts()} /></div>
+            )}
+          </Card>
 
           {/* Language Usage per Day */}
           <Card title={t("dashboard.languageUsagePerDay")} subtitle={t("dashboard.languageUsagePerDayDesc")}>

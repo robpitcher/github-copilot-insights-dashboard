@@ -146,6 +146,8 @@ export const fr: TranslationKeys = {
     modelUsagePerLanguageDesc: "Barres horizontales empilées — modèles par langage",
     allModels: "Tous les modèles",
     models: "Modèles :",
+    allChatModes: "Tous les modes",
+    chatModes: "Modes :",
     allLanguages: "Tous les langages",
     languages: "Langages :",
     ofTotal: "sur {0} total",
