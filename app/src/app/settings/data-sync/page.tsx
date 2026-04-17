@@ -132,7 +132,7 @@ export default function DataSyncPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
-  const logEndRef = useRef<HTMLDivElement>(null);
+  const logContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -182,7 +182,7 @@ export default function DataSyncPage() {
   } | null>(null);
   const [teamsSyncing, setTeamsSyncing] = useState(false);
   const [teamsSyncLogs, setTeamsSyncLogs] = useState<string[]>([]);
-  const teamsLogEndRef = useRef<HTMLDivElement>(null);
+  const teamsLogContainerRef = useRef<HTMLDivElement>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -247,11 +247,13 @@ export default function DataSyncPage() {
   }, [fetchData]);
 
   useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = logContainerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [ingestLogs]);
 
   useEffect(() => {
-    teamsLogEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = teamsLogContainerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [teamsSyncLogs]);
 
   // Close dropdown on outside click
@@ -1234,13 +1236,12 @@ export default function DataSyncPage() {
               </span>
               {teamsSyncing && <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-400" />}
             </div>
-            <div className="max-h-48 overflow-y-auto px-3 py-2 font-mono text-xs">
+            <div ref={teamsLogContainerRef} className="max-h-48 overflow-y-auto px-3 py-2 font-mono text-xs">
               {teamsSyncLogs.map((line, i) => (
                 <div key={i} className="whitespace-pre-wrap break-all">
                   {line}
                 </div>
               ))}
-              <div ref={teamsLogEndRef} />
             </div>
           </div>
         )}
@@ -1322,7 +1323,7 @@ export default function DataSyncPage() {
             <span className="text-xs font-medium text-gray-400 dark:text-gray-500">Ingestion Log</span>
             {isBusy && <Loader2 className="ml-auto h-3 w-3 animate-spin text-green-400" />}
           </div>
-          <div className="max-h-64 overflow-y-auto p-3 font-mono text-xs leading-5">
+          <div ref={logContainerRef} className="max-h-64 overflow-y-auto p-3 font-mono text-xs leading-5">
             {ingestLogs.map((line, i) => (
               <div
                 key={i}
@@ -1337,7 +1338,6 @@ export default function DataSyncPage() {
                 {line}
               </div>
             ))}
-            <div ref={logEndRef} />
           </div>
         </div>
       )}
