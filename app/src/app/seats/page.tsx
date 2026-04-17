@@ -19,7 +19,7 @@ import { useTranslation } from "@/lib/i18n/locale-provider";
 import { ConfigurationBanner } from "@/components/layout/configuration-banner";
 import { PageHeader } from "@/components/layout/page-header";
 import { DataSourceBanner } from "@/components/layout/report-filters";
-import { AlertTriangle, Settings } from "lucide-react";
+import { AlertTriangle, Settings, Lightbulb, Sparkles, Users, BookOpen, Bot } from "lucide-react";
 import Link from "next/link";
 
 ChartJS.register(
@@ -185,10 +185,10 @@ export default function BusinessValuePage() {
   const savingsBar = useMemo(() => {
     if (!data) return null;
     return {
-      labels: ["Active Seats Cost", "Potential Savings"],
+      labels: ["Active Seats Cost", "Enablement Opportunity"],
       datasets: [{
         data: [data.activeCost, data.potentialMonthlySavings],
-        backgroundColor: ["#22c55e", "#ef4444"],
+        backgroundColor: ["#22c55e", "#3b82f6"],
         borderRadius: 6,
       }],
     };
@@ -321,20 +321,41 @@ export default function BusinessValuePage() {
         </div>
       )}
 
-      {/* Savings Banner */}
+      {/* Enablement Banner */}
       {data.potentialMonthlySavings > 0 && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-amber-900 dark:text-amber-200">Potential Savings Opportunity</h3>
-              <p className="text-sm text-amber-700 dark:text-amber-300">
-                {data.inactiveCount} users have not used Copilot in the last {data.inactiveThresholdDays} days.
-                Removing their seats could save:
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-5 dark:border-blue-800 dark:bg-blue-900/30">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <Lightbulb className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <h3 className="font-semibold text-blue-900 dark:text-blue-200">{t("seats.potentialSavingsOpportunity")}</h3>
+              </div>
+              <p className="mt-1 text-sm text-blue-700 dark:text-blue-300">
+                {t("seats.enablementBannerDescription", data.inactiveCount, data.inactiveThresholdDays)}
               </p>
+              <ul className="mt-3 space-y-2 text-sm text-blue-700 dark:text-blue-300">
+                <li className="flex items-start gap-2">
+                  <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-blue-500 dark:text-blue-400" />
+                  <span>{t("seats.enablementTip1")}</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Users className="mt-0.5 h-4 w-4 shrink-0 text-blue-500 dark:text-blue-400" />
+                  <span>{t("seats.enablementTip2")}</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <BookOpen className="mt-0.5 h-4 w-4 shrink-0 text-blue-500 dark:text-blue-400" />
+                  <span>{t("seats.enablementTip3")}</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Bot className="mt-0.5 h-4 w-4 shrink-0 text-blue-500 dark:text-blue-400" />
+                  <span>{t("seats.enablementTip4")}</span>
+                </li>
+              </ul>
             </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold text-amber-900 dark:text-amber-200">{fmt$(data.potentialMonthlySavings)}/mo</p>
-              <p className="text-sm text-amber-700 dark:text-amber-300">{fmt$(data.potentialAnnualSavings)}/year</p>
+            <div className="text-right shrink-0">
+              <p className="text-xs font-medium uppercase tracking-wider text-blue-500 dark:text-blue-400">{t("seats.enablementInvestment")}</p>
+              <p className="text-2xl font-bold text-blue-900 dark:text-blue-200">{fmt$(data.potentialMonthlySavings)}/mo</p>
+              <p className="text-sm text-blue-700 dark:text-blue-300">{fmt$(data.potentialAnnualSavings)}/year</p>
             </div>
           </div>
         </div>
@@ -391,8 +412,8 @@ export default function BusinessValuePage() {
                 <td className="py-2 pr-4 text-right">{fmt$(data.activeCost)}</td>
                 <td className="py-2 text-right">{fmt$(data.activeCost * 12)}</td>
               </tr>
-              <tr className="font-medium text-amber-700 dark:text-amber-400">
-                <td className="py-2 pr-4">Potential Savings (Inactive Seats)</td>
+              <tr className="font-medium text-blue-700 dark:text-blue-400">
+                <td className="py-2 pr-4">Enablement Investment (Users to Enable)</td>
                 <td className="py-2 pr-4 text-right">{fmt$(data.potentialMonthlySavings)}</td>
                 <td className="py-2 text-right">{fmt$(data.potentialAnnualSavings)}</td>
               </tr>
@@ -401,9 +422,9 @@ export default function BusinessValuePage() {
         </div>
       </Card>
 
-      {/* Inactive Users Table */}
+      {/* Users to Enable Table */}
       {data.inactiveUsers.length > 0 && (
-        <Card title={`Inactive users (${data.inactiveUsers.length})`} subtitle={`No activity in the last ${data.inactiveThresholdDays} days`}>
+        <Card title={`Users to enable (${data.inactiveUsers.length})`} subtitle={`No activity in the last ${data.inactiveThresholdDays} days — consider onboarding support`}>
           <DataTable
             columns={[
               { key: "displayLabel", header: "User", render: (value: unknown) => <span className="font-medium text-gray-900 dark:text-gray-100">{String(value)}</span> },

@@ -745,11 +745,11 @@ const METRICS: MetricDef[] = [
     source: "Calculated from seat data + plan pricing",
   },
   {
-    name: "Cost vs Savings",
+    name: "Active Cost vs Enablement Opportunity",
     page: "Copilot Licensing",
     chart: "Bar Chart",
-    description: "Comparison of active seat cost vs potential savings from reallocating inactive seats.",
-    calculation: "Active Seat Cost = active_count × avg_plan_price. Potential Savings = inactive_count × avg_plan_price.",
+    description: "Comparison of active seat cost vs investment opportunity in enabling inactive users.",
+    calculation: "Active Seat Cost = active_count × avg_plan_price. Enablement Opportunity = inactive_count × avg_plan_price.",
     source: "Derived from seat utilization data",
   },
   {
