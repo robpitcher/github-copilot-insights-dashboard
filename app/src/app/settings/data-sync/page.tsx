@@ -93,6 +93,9 @@ const SOURCE_LABELS: Record<string, { label: string; color: string; icon: typeof
   file_upload: { label: "File Upload", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300", icon: FileDown },
 };
 
+/** Pixel threshold – auto-scroll only when within this distance of the bottom. */
+const AUTO_SCROLL_THRESHOLD = 64;
+
 const SCOPE_LABELS: Record<string, { label: string; color: string }> = {
   enterprise: { label: "Enterprise", color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300" },
   all_orgs: { label: "All Orgs", color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300" },
@@ -248,12 +251,16 @@ export default function DataSyncPage() {
 
   useEffect(() => {
     const el = logContainerRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < AUTO_SCROLL_THRESHOLD;
+    if (isNearBottom) el.scrollTop = el.scrollHeight;
   }, [ingestLogs]);
 
   useEffect(() => {
     const el = teamsLogContainerRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < AUTO_SCROLL_THRESHOLD;
+    if (isNearBottom) el.scrollTop = el.scrollHeight;
   }, [teamsSyncLogs]);
 
   // Close dropdown on outside click
