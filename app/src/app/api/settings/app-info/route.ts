@@ -51,7 +51,6 @@ export async function GET() {
         version: process.env.NEXT_PUBLIC_APP_VERSION ?? "0.0.0",
         buildId: process.env.NEXT_PUBLIC_BUILD_ID ?? "dev",
         buildTime: process.env.NEXT_PUBLIC_BUILD_TIME ?? null,
-        nodeEnv: process.env.NODE_ENV ?? "development",
       },
       requiredScopes: [
         { scope: "manage_billing:copilot (read)", description: "Copilot usage metrics" },

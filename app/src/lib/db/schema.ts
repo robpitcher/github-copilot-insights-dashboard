@@ -97,6 +97,8 @@ export const dimUser = pgTable(
   },
   (table) => [
     index("idx_dim_user_user_id").on(table.userId),
+    index("idx_dim_user_is_current").on(table.isCurrent),
+    index("idx_dim_user_org_id").on(table.orgId),
   ]
 );
 
@@ -169,6 +171,8 @@ export const factCopilotUsageDaily = pgTable(
   (table) => [
     uniqueIndex("idx_fact_usage_unique").on(table.day, table.enterpriseId, table.userId),
     index("idx_fact_usage_day_org").on(table.day, table.orgId),
+    index("idx_fact_usage_user_id").on(table.userId),
+    index("idx_fact_usage_enterprise_id").on(table.enterpriseId),
   ]
 );
 

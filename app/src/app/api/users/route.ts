@@ -11,12 +11,12 @@ import { safeErrorMessage } from "@/lib/auth";
 const querySchema = z.object({
   start: z.string().refine(isValidDate).optional(),
   end: z.string().refine(isValidDate).optional(),
-  days: z.coerce.number().int().positive().optional(),
+  days: z.coerce.number().int().positive().max(365).optional(),
   search: z.string().max(100).optional(),
   orgId: z.coerce.number().int().optional(),
   segment: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(500).optional(),
-  offset: z.coerce.number().int().min(0).optional(),
+  offset: z.coerce.number().int().min(0).max(100000).optional(),
   sortBy: z.enum(["interactions", "acceptance_rate", "days_active", "last_active"]).optional(),
   sortDir: z.enum(["asc", "desc"]).optional(),
 });
@@ -71,10 +71,16 @@ export async function GET(request: NextRequest) {
       .groupBy(factCopilotUsageDaily.userId, factCopilotUsageDaily.userLogin)
       .orderBy(
         params.sortBy === "days_active"
-          ? sql`COUNT(DISTINCT ${factCopilotUsageDaily.day}) ${sql.raw(params.sortDir === "asc" ? "ASC" : "DESC")}`
+          ? (params.sortDir === "asc"
+              ? sql`COUNT(DISTINCT ${factCopilotUsageDaily.day}) ASC`
+              : sql`COUNT(DISTINCT ${factCopilotUsageDaily.day}) DESC`)
           : params.sortBy === "acceptance_rate"
-            ? sql`CASE WHEN SUM(${factCopilotUsageDaily.codeGenerationActivityCount}) > 0 THEN SUM(${factCopilotUsageDaily.codeAcceptanceActivityCount})::NUMERIC / SUM(${factCopilotUsageDaily.codeGenerationActivityCount}) ELSE 0 END ${sql.raw(params.sortDir === "asc" ? "ASC" : "DESC")}`
-            : sql`COALESCE(SUM(${factCopilotUsageDaily.userInitiatedInteractionCount}), 0) ${sql.raw(params.sortDir === "asc" ? "ASC" : "DESC")}`
+            ? (params.sortDir === "asc"
+                ? sql`CASE WHEN SUM(${factCopilotUsageDaily.codeGenerationActivityCount}) > 0 THEN SUM(${factCopilotUsageDaily.codeAcceptanceActivityCount})::NUMERIC / SUM(${factCopilotUsageDaily.codeGenerationActivityCount}) ELSE 0 END ASC`
+                : sql`CASE WHEN SUM(${factCopilotUsageDaily.codeGenerationActivityCount}) > 0 THEN SUM(${factCopilotUsageDaily.codeAcceptanceActivityCount})::NUMERIC / SUM(${factCopilotUsageDaily.codeGenerationActivityCount}) ELSE 0 END DESC`)
+            : (params.sortDir === "asc"
+                ? sql`COALESCE(SUM(${factCopilotUsageDaily.userInitiatedInteractionCount}), 0) ASC`
+                : sql`COALESCE(SUM(${factCopilotUsageDaily.userInitiatedInteractionCount}), 0) DESC`)
       )
       .limit(limit)
       .offset(offset);

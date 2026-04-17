@@ -6,7 +6,7 @@ import { daysAgo, isValidDate } from "@/lib/utils";
 import { z } from "zod";
 
 const querySchema = z.object({
-  days: z.coerce.number().int().positive().optional(),
+  days: z.coerce.number().int().positive().max(365).optional(),
   start: z.string().refine(isValidDate).optional(),
   end: z.string().refine(isValidDate).optional(),
   orgId: z.string().optional(),

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { sql } from "drizzle-orm";
+import { safeErrorMessage } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ export async function GET() {
       {
         status: "unhealthy",
         database: "disconnected",
-        error: err instanceof Error ? err.message : "Unknown error",
+        error: safeErrorMessage(err, "Database connection failed"),
         timestamp: new Date().toISOString(),
       },
       { status: 503 }

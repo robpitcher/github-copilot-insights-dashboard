@@ -21,7 +21,6 @@ interface AppInfoData {
     version: string;
     buildId: string;
     buildTime: string | null;
-    nodeEnv: string;
   };
   requiredScopes: Array<{
     scope: string;
@@ -199,14 +198,6 @@ export default function AppInfoPage() {
             </span>
             <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
               {data.app.buildTime ?? "—"}
-            </span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              {t("appInfo.nodeEnv")}
-            </span>
-            <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-mono font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-              {data.app.nodeEnv}
             </span>
           </div>
         </div>

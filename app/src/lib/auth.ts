@@ -42,8 +42,10 @@ export function safeCompare(a: string, b: string): boolean {
   const bufB = Buffer.from(b);
 
   if (bufA.length !== bufB.length) {
-    // Still perform a compare to avoid leaking length difference via timing
-    timingSafeEqual(bufA, bufA);
+    // Pad the shorter buffer to match length, then compare to avoid timing leak
+    const padded = Buffer.alloc(bufA.length, 0);
+    bufB.copy(padded, 0, 0, Math.min(bufB.length, bufA.length));
+    timingSafeEqual(bufA, padded);
     return false;
   }
 

@@ -75,27 +75,27 @@ async function ensureDimensions(
 ) {
   // Organizations — from discovered orgs + any org IDs in records
   if (discoveredOrgs?.length) {
-    for (const org of discoveredOrgs) {
+    // Batch upsert discovered orgs
+    const orgValues = discoveredOrgs.map((org) => ({
+      orgName: org.login,
+      githubOrgId: org.id,
+    }));
+    for (const val of orgValues) {
       await db
         .insert(dimOrg)
-        .values({
-          orgName: org.login,
-          githubOrgId: org.id,
-        })
+        .values(val)
         .onConflictDoUpdate({
           target: dimOrg.orgName,
-          set: { githubOrgId: org.id, updatedAt: new Date() },
+          set: { githubOrgId: val.githubOrgId, updatedAt: new Date() },
         });
     }
   }
 
   // Also handle org IDs from records (e.g. from file uploads)
   const orgGithubIds = extractUniqueOrgIds(records);
-  for (const ghOrgId of orgGithubIds) {
-    await db
-      .insert(dimOrg)
-      .values({ orgName: String(ghOrgId) })
-      .onConflictDoNothing({ target: dimOrg.orgName });
+  if (orgGithubIds.length > 0) {
+    const orgIdValues = orgGithubIds.map((ghOrgId) => ({ orgName: String(ghOrgId) }));
+    await db.insert(dimOrg).values(orgIdValues).onConflictDoNothing({ target: dimOrg.orgName });
   }
 
   // Handle _orgLogin from per-org fetches
@@ -103,11 +103,9 @@ async function ensureDimensions(
   for (const r of records) {
     if (r._orgLogin) orgLogins.add(r._orgLogin);
   }
-  for (const login of orgLogins) {
-    await db
-      .insert(dimOrg)
-      .values({ orgName: login })
-      .onConflictDoNothing({ target: dimOrg.orgName });
+  if (orgLogins.size > 0) {
+    const orgLoginValues = [...orgLogins].map((login) => ({ orgName: login }));
+    await db.insert(dimOrg).values(orgLoginValues).onConflictDoNothing({ target: dimOrg.orgName });
   }
 
   const orgs = await db.select().from(dimOrg);
@@ -115,46 +113,34 @@ async function ensureDimensions(
   // Also map githubOrgId → orgId
   const orgIdToKeyMap = new Map(orgs.filter(o => o.githubOrgId).map((o) => [String(o.githubOrgId), o.orgId]));
 
-  // IDEs
+  // IDEs — batch insert
   const ideNames = extractUniqueIdes(records);
-  for (const name of ideNames) {
-    await db
-      .insert(dimIde)
-      .values({ ideName: name })
-      .onConflictDoNothing({ target: dimIde.ideName });
+  if (ideNames.length > 0) {
+    await db.insert(dimIde).values(ideNames.map((name) => ({ ideName: name }))).onConflictDoNothing({ target: dimIde.ideName });
   }
   const ides = await db.select().from(dimIde);
   const ideMap = new Map(ides.map((i) => [i.ideName, i.ideId]));
 
-  // Features
+  // Features — batch insert
   const featureNames = extractUniqueFeatures(records);
-  for (const name of featureNames) {
-    await db
-      .insert(dimFeature)
-      .values({ featureName: name })
-      .onConflictDoNothing({ target: dimFeature.featureName });
+  if (featureNames.length > 0) {
+    await db.insert(dimFeature).values(featureNames.map((name) => ({ featureName: name }))).onConflictDoNothing({ target: dimFeature.featureName });
   }
   const features = await db.select().from(dimFeature);
   const featureMap = new Map(features.map((f) => [f.featureName, f.featureId]));
 
-  // Languages
+  // Languages — batch insert
   const langNames = extractUniqueLanguages(records);
-  for (const name of langNames) {
-    await db
-      .insert(dimLanguage)
-      .values({ languageName: name })
-      .onConflictDoNothing({ target: dimLanguage.languageName });
+  if (langNames.length > 0) {
+    await db.insert(dimLanguage).values(langNames.map((name) => ({ languageName: name }))).onConflictDoNothing({ target: dimLanguage.languageName });
   }
   const langs = await db.select().from(dimLanguage);
   const langMap = new Map(langs.map((l) => [l.languageName, l.languageId]));
 
-  // Models
+  // Models — batch insert
   const modelNames = extractUniqueModels(records);
-  for (const name of modelNames) {
-    await db
-      .insert(dimModel)
-      .values({ modelName: name })
-      .onConflictDoNothing();
+  if (modelNames.length > 0) {
+    await db.insert(dimModel).values(modelNames.map((name) => ({ modelName: name }))).onConflictDoNothing();
   }
   const models = await db.select().from(dimModel);
   const modelMap = new Map(models.map((m) => [m.modelName, m.modelId]));

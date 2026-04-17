@@ -17,7 +17,7 @@ import { z } from "zod";
 import { safeErrorMessage } from "@/lib/auth";
 
 const querySchema = z.object({
-  days: z.coerce.number().int().positive().optional(),
+  days: z.coerce.number().int().positive().max(365).optional(),
   start: z.string().refine(isValidDate).optional(),
   end: z.string().refine(isValidDate).optional(),
   userId: z.coerce.number().int().optional(),
