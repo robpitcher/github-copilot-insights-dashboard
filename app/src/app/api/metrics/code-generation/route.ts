@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { factCopilotUsageDaily, rawCopilotUsage } from "@/lib/db/schema";
-import { sql, and, gte, lte } from "drizzle-orm";
+import { sql, and, gte, lte, eq } from "drizzle-orm";
 import { daysAgo, isValidDate } from "@/lib/utils";
 import { z } from "zod";
 import { safeErrorMessage } from "@/lib/auth";
