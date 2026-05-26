@@ -72,6 +72,7 @@ interface PRData {
 /* ── Helpers ── */
 
 const COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6"];
+const EMPTY_DAILY: DailyPR[] = [];
 
 function fmtDate(d: string) {
   return new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -117,7 +118,7 @@ export default function PullRequestsPage() {
   }, []);
 
   const totals = data?.totals;
-  const daily = data?.daily ?? [];
+  const daily = data?.daily ?? EMPTY_DAILY;
   const labels = [...new Set(daily.map((d) => d.day))].sort();
 
   const aggByDay = useMemo(() => {
