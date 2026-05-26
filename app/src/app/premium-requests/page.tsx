@@ -510,7 +510,7 @@ export default function PremiumRequestsPage() {
         </Card>
         <Card title="Cost Trends (daily)" subtitle="Requests and net spend trend for the selected month">
           {dailyCostTrend ? (
-            <div className="h-[280px]"><Bar data={dailyCostTrend} options={{
+            <div className="h-[280px]"><Bar data={dailyCostTrend as any} options={{
               ...barOpts,
               maintainAspectRatio: false,
               scales: {
