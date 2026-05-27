@@ -4,6 +4,16 @@ These rules guide Copilot's commit-message generation in VS Code
 (referenced by `github.copilot.chat.commitMessageGeneration.instructions`
 in [.vscode/settings.json](../.vscode/settings.json)).
 
+## Scope of changes
+
+- **Summarize ALL staged changes**, not just the last file in the diff.
+  When the diff is large, group related changes into themes and describe
+  the overall intent in the subject line, with per-theme detail in the body.
+- If changes span multiple areas (schema, ETL, API routes, UI, translations),
+  pick the highest-level theme for the subject and list the sub-areas in the body.
+- Never generate a message that only describes one file when multiple files
+  are staged.
+
 ## Format
 
 ```text
