@@ -26,8 +26,14 @@ import {
   dimOrg,
   ingestionLog,
 } from "@/lib/db/schema";
-import { fetchCopilotUsage, fetchMultiOrgCopilotUsage } from "@/lib/github/copilot-api";
-import type { CopilotUsageRecord, CopilotAggregateRecord, EnterpriseOrg } from "@/types/copilot-api";
+import {
+  fetchCopilotUsage,
+  fetchMultiOrgCopilotUsage,
+  fetchEnterpriseAggregate,
+  fetchUserTeams,
+  buildUserTeamMap,
+} from "@/lib/github/copilot-api";
+import type { CopilotUsageRecord, CopilotAggregateRecord, EnterpriseOrg, UserTeamRecord } from "@/types/copilot-api";
 import type { SyncScope } from "@/lib/db/settings";
 import {
   transformToFactUsage,
@@ -306,7 +312,7 @@ async function loadRecords(
         reportDate: record.day,
         enterpriseId: parseInt(String(record.enterprise_id), 10) || 0,
         userId: record.user_id,
-        sourceTeamGithubId: record.team_id ? parseInt(String(record.team_id), 10) || null : null,
+        sourceTeamGithubId: record._teamGithubId ?? null,
         rawJson: record,
         contentHash: hash,
         reportStartDay: record.report_start_day ?? null,
@@ -594,6 +600,76 @@ async function loadRecords(
 }
 
 /**
+ * Annotate per-user usage records with a representative GitHub team ID by
+ * joining the daily `user-teams` report(s) on `(user_id, day)`.
+ *
+ * Fetches the enterprise user-teams report (when the enterprise scope was used)
+ * and/or the per-org user-teams reports (when org scopes were used), merges the
+ * memberships, and writes `_teamGithubId` onto each matching record.
+ *
+ * Returns the number of records that were matched to a team.
+ */
+async function annotateRecordsWithTeams(opts: {
+  records: CopilotUsageRecord[];
+  day: string;
+  token: string;
+  enterpriseSlug: string;
+  useEnterpriseReport: boolean;
+  orgLogins: string[];
+  onLog: (msg: string) => void;
+  onApiRequest: (count: number) => void;
+}): Promise<number> {
+  const { records, day, token, enterpriseSlug, useEnterpriseReport, orgLogins, onLog, onApiRequest } = opts;
+
+  const allUserTeams: UserTeamRecord[] = [];
+
+  if (useEnterpriseReport) {
+    onLog(`Fetching enterprise user-teams report for ${day}…`);
+    const { records: utRecords, apiRequestCount } = await fetchUserTeams({
+      day,
+      token,
+      enterpriseSlug,
+    });
+    onApiRequest(apiRequestCount);
+    allUserTeams.push(...utRecords);
+    onLog(`Enterprise user-teams: ${utRecords.length} membership row(s)`);
+  }
+
+  for (const orgLogin of orgLogins) {
+    onLog(`Fetching user-teams report for org "${orgLogin}" (${day})…`);
+    const { records: utRecords, apiRequestCount } = await fetchUserTeams({
+      day,
+      token,
+      orgLogin,
+    });
+    onApiRequest(apiRequestCount);
+    allUserTeams.push(...utRecords);
+    onLog(`Org "${orgLogin}" user-teams: ${utRecords.length} membership row(s)`);
+  }
+
+  if (allUserTeams.length === 0) {
+    onLog(
+      "No user-teams memberships returned. Teams with fewer than 5 seated " +
+      "Copilot users are omitted from these reports."
+    );
+    return 0;
+  }
+
+  const userTeamMap = buildUserTeamMap(allUserTeams);
+
+  let matched = 0;
+  for (const record of records) {
+    const teamId = userTeamMap.get(`${record.user_id}|${record.day}`);
+    if (teamId !== undefined) {
+      record._teamGithubId = teamId;
+      matched++;
+    }
+  }
+
+  return matched;
+}
+
+/**
  * Ingest from GitHub API. Fetches per-org data, transforms, and loads Copilot usage data.
  * Uses multi-org strategy: discovers all orgs, fetches user + aggregate data per org.
  */
@@ -671,6 +747,21 @@ export async function ingestCopilotUsage(opts: IngestOptions): Promise<{
       records.push(...result.records);
       apiRequestCount += result.apiRequestCount;
       log(`Enterprise endpoint returned ${result.records.length} user records in ${result.apiRequestCount} API requests`);
+
+      // Fetch enterprise-level aggregates (active-user counts + PR metrics)
+      // directly, instead of reconstructing them by looping organizations.
+      try {
+        const aggResult = await fetchEnterpriseAggregate({
+          enterpriseSlug: opts.enterpriseSlug,
+          token: opts.token,
+          day: opts.day,
+        });
+        aggregateRecords.push(...aggResult.records);
+        apiRequestCount += aggResult.apiRequestCount;
+        log(`Enterprise aggregate endpoint returned ${aggResult.records.length} day record(s) in ${aggResult.apiRequestCount} API requests`);
+      } catch (err) {
+        log(`Enterprise aggregate fetch failed (continuing without enterprise aggregates): ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
 
     if (hasAllOrgs || hasOrganization) {
@@ -709,6 +800,38 @@ export async function ingestCopilotUsage(opts: IngestOptions): Promise<{
       orgs.push(...orgResult.orgs);
       apiRequestCount += orgResult.apiRequestCount;
       log(`Org fetch: ${orgResult.records.length} user records, ${orgResult.aggregateRecords.length} aggregates, ${orgResult.orgs.length} org(s), ${orgResult.apiRequestCount} API requests`);
+    }
+
+    // ── Team attribution (official user-teams join) ──
+    // Team membership is NOT part of the per-user usage report. The supported
+    // approach is to join the daily user-teams report on (user_id, day).
+    // This is daily-only: the join is skipped for 28-day reports to avoid
+    // mis-attributing a rolling window against a single-day membership snapshot.
+    if (records.length > 0) {
+      if (!opts.day) {
+        log(
+          "Skipping team attribution: user-teams reports are daily only and must " +
+          "not be joined with the 28-day usage report. Specify a day to enable team metrics."
+        );
+      } else {
+        try {
+          const matchedCount = await annotateRecordsWithTeams({
+            records,
+            day: opts.day,
+            token: opts.token,
+            enterpriseSlug: opts.enterpriseSlug,
+            useEnterpriseReport: hasEnterprise,
+            orgLogins: (hasAllOrgs || hasOrganization)
+              ? [...new Set(orgs.map((o) => o.login))]
+              : [],
+            onLog: log,
+            onApiRequest: (n) => { apiRequestCount += n; },
+          });
+          log(`Team attribution: matched ${matchedCount} user/day record(s) to a team`);
+        } catch (err) {
+          log(`Team attribution failed (continuing without team metrics): ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
     }
 
     const fetchDuration = ((Date.now() - fetchStartTime) / 1000).toFixed(1);

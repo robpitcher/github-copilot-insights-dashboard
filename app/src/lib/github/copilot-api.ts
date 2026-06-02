@@ -10,6 +10,8 @@ import type {
   CopilotUsageRecord,
   CopilotMetricsReportResponse,
   CopilotAggregateRecord,
+  AggregateReportLine,
+  UserTeamRecord,
   EnterpriseOrg,
   EnterpriseTeam,
   EnterpriseTeamMember,
@@ -113,6 +115,20 @@ function buildReportUrl(opts: FetchOptions): string {
 
   // Latest 28-day report
   return `${GITHUB_API_BASE}/enterprises/${slug}/copilot/metrics/reports/users-28-day/latest`;
+}
+
+function buildEnterpriseAggregateReportUrl(opts: FetchOptions): string {
+  const slug = encodeURIComponent(opts.enterpriseSlug);
+
+  if (opts.day) {
+    const url = new URL(
+      `${GITHUB_API_BASE}/enterprises/${slug}/copilot/metrics/reports/enterprise-1-day`
+    );
+    url.searchParams.set("day", opts.day);
+    return url.toString();
+  }
+
+  return `${GITHUB_API_BASE}/enterprises/${slug}/copilot/metrics/reports/enterprise-28-day/latest`;
 }
 
 function buildOrgUserReportUrl(opts: OrgFetchOptions): string {
@@ -314,7 +330,140 @@ export function parseNdjson<T = CopilotUsageRecord>(content: string): T[] {
 }
 
 /**
+ * Flatten an entity-level aggregate report line into per-day aggregate records.
+ *
+ * The enterprise/organization aggregate reports return one NDJSON line per
+ * entity, each wrapping an array of per-day totals under `day_totals`
+ * (see the official enterprise-level schema example). This expands those into
+ * one `CopilotAggregateRecord` per day. Lines that are already flat (carry a
+ * top-level `day`) are passed through unchanged for forward compatibility.
+ */
+export function flattenAggregateReport(
+  lines: AggregateReportLine[],
+  scope: "enterprise" | "organization",
+  orgLogin?: string
+): CopilotAggregateRecord[] {
+  const records: CopilotAggregateRecord[] = [];
+
+  for (const line of lines) {
+    const dayTotals = line.day_totals;
+    if (Array.isArray(dayTotals) && dayTotals.length > 0) {
+      for (const dayTotal of dayTotals) {
+        records.push({
+          ...dayTotal,
+          enterprise_id: dayTotal.enterprise_id ?? line.enterprise_id,
+          organization_id: dayTotal.organization_id ?? line.organization_id,
+          _scope: scope,
+          ...(orgLogin ? { _orgLogin: orgLogin } : {}),
+        });
+      }
+    } else if (line.day) {
+      // Already flat — keep as-is.
+      records.push({
+        ...(line as CopilotAggregateRecord),
+        _scope: scope,
+        ...(orgLogin ? { _orgLogin: orgLogin } : {}),
+      });
+    }
+  }
+
+  return records;
+}
+
+/**
+ * Fetches enterprise-level aggregate Copilot metrics (active-user counts and
+ * pull request metrics) directly from the enterprise aggregate report endpoint
+ * (`enterprise-28-day/latest` or `enterprise-1-day?day=`).
+ *
+ * This avoids looping every organization just to reconstruct enterprise-wide
+ * aggregates: GitHub publishes them pre-aggregated at the enterprise scope.
+ */
+export async function fetchEnterpriseAggregate(
+  opts: FetchOptions
+): Promise<AggregateResult> {
+  let apiRequestCount = 0;
+
+  console.info(
+    `Fetching enterprise aggregate metrics for "${opts.enterpriseSlug}" ` +
+    `(day: ${opts.day ?? "latest 28-day"})`
+  );
+
+  const reportUrl = buildEnterpriseAggregateReportUrl(opts);
+  const reportResponse = await fetchWithRetry(reportUrl, opts.token);
+  apiRequestCount++;
+
+  const reportData: CopilotMetricsReportResponse = await reportResponse.json();
+
+  if (!reportData.download_links || reportData.download_links.length === 0) {
+    console.info("No download links returned from the enterprise aggregate endpoint.");
+    return { records: [], apiRequestCount };
+  }
+
+  const lines: AggregateReportLine[] = [];
+  for (const link of reportData.download_links) {
+    const fileResponse = await fetch(link);
+    apiRequestCount++;
+    if (!fileResponse.ok) {
+      console.warn(`Failed to download enterprise aggregate file: ${fileResponse.status} ${fileResponse.statusText}`);
+      continue;
+    }
+    const content = await fileResponse.text();
+    lines.push(...parseNdjson<AggregateReportLine>(content));
+  }
+
+  const records = flattenAggregateReport(lines, "enterprise");
+  console.info(
+    `Enterprise aggregate: ${records.length} day record(s) in ${apiRequestCount} API requests`
+  );
+
+  return { records, apiRequestCount };
+}
+
+/** Returns true for NonRetryableError caused by HTTP 403/404. */
+function isForbiddenOrNotFound(err: unknown): boolean {
+  return (
+    err instanceof NonRetryableError &&
+    (/\b403\b/.test(err.message) || /\b404\b/.test(err.message))
+  );
+}
+
+/**
+ * Paginate `GET /user/orgs` — lists all orgs the authenticated token is a member
+ * of. Used only as a fallback when the enterprise-scoped endpoint is unavailable
+ * (e.g. the token is not an enterprise admin/billing manager).
+ */
+async function listOrgsViaUserMemberships(
+  token: string
+): Promise<{ orgs: EnterpriseOrg[]; apiRequestCount: number }> {
+  let apiRequestCount = 0;
+  const allOrgs: EnterpriseOrg[] = [];
+  let page = 1;
+  const perPage = 100;
+
+  while (true) {
+    const url = `${GITHUB_API_BASE}/user/orgs?per_page=${perPage}&page=${page}`;
+    const response = await fetchWithRetry(url, token, MAX_RETRIES);
+    apiRequestCount++;
+
+    const orgs: EnterpriseOrg[] = await response.json();
+    allOrgs.push(...orgs);
+
+    if (orgs.length < perPage) break;
+    page++;
+  }
+
+  return { orgs: allOrgs, apiRequestCount };
+}
+
+/**
  * Lists all organizations in an enterprise (paginated).
+ *
+ * Uses the official enterprise-scoped endpoint
+ * `GET /enterprises/{enterprise}/organizations`, which returns the true set of
+ * organizations owned by the enterprise. If that endpoint is forbidden or not
+ * found (e.g. a non-enterprise token, or insufficient scopes), it falls back to
+ * `GET /user/orgs`, which only lists orgs the token's user is a member of and
+ * can therefore under-count enterprise organizations.
  */
 export async function listEnterpriseOrgs(opts: {
   enterpriseSlug: string;
@@ -327,22 +476,37 @@ export async function listEnterpriseOrgs(opts: {
 
   console.info(`Discovering organizations for enterprise "${opts.enterpriseSlug}"…`);
 
-  // Use GET /user/orgs — lists all orgs the authenticated token has access to.
-  // Requires `read:org` scope for classic PATs, or no special permissions for fine-grained tokens.
-  while (true) {
-    const url = `${GITHUB_API_BASE}/user/orgs?per_page=${perPage}&page=${page}`;
-    const response = await fetchWithRetry(url, opts.token, MAX_RETRIES);
-    apiRequestCount++;
+  const slug = encodeURIComponent(opts.enterpriseSlug);
 
-    const orgs: EnterpriseOrg[] = await response.json();
-    allOrgs.push(...orgs);
+  try {
+    while (true) {
+      const url = `${GITHUB_API_BASE}/enterprises/${slug}/organizations?per_page=${perPage}&page=${page}`;
+      const response = await fetchWithRetry(url, opts.token, MAX_RETRIES);
+      apiRequestCount++;
 
-    if (orgs.length < perPage) break;
-    page++;
+      const orgs: EnterpriseOrg[] = await response.json();
+      allOrgs.push(...orgs);
+
+      if (orgs.length < perPage) break;
+      page++;
+    }
+
+    console.info(`Found ${allOrgs.length} organization(s) in enterprise "${opts.enterpriseSlug}"`);
+    return { orgs: allOrgs, apiRequestCount };
+  } catch (err) {
+    if (!isForbiddenOrNotFound(err)) throw err;
+
+    console.warn(
+      `Enterprise organizations endpoint unavailable (${(err as Error).message}). ` +
+      `Falling back to GET /user/orgs (may under-count enterprise organizations).`
+    );
+
+    const fallback = await listOrgsViaUserMemberships(opts.token);
+    apiRequestCount += fallback.apiRequestCount;
+
+    console.info(`Found ${fallback.orgs.length} organization(s) accessible to the token (fallback)`);
+    return { orgs: fallback.orgs, apiRequestCount };
   }
-
-  console.info(`Found ${allOrgs.length} organization(s) accessible to the token`);
-  return { orgs: allOrgs, apiRequestCount };
 }
 
 export interface OrgMember {
@@ -687,4 +851,87 @@ export async function listEnterpriseTeamMembers(opts: {
 
   log(`Team "${opts.teamSlug}": ${allMembers.length} member(s)`);
   return { members: allMembers, apiRequestCount };
+}
+
+/**
+ * Fetches the daily `user-teams` report and returns one row per
+ * `(user, team)` membership for the given day.
+ *
+ * This is the officially supported source for team attribution: the per-user
+ * usage report does not carry team membership. Callers join these rows to the
+ * daily per-user usage report on `(user_id, day)` and aggregate by `team_id`.
+ *
+ * Endpoints:
+ *   GET /enterprises/{enterprise}/copilot/metrics/reports/user-teams-1-day?day=
+ *   GET /orgs/{org}/copilot/metrics/reports/user-teams-1-day?day=
+ *
+ * Caveats (per GitHub docs):
+ *   - Reports are daily only; always join daily activity with daily membership.
+ *   - Teams with fewer than 5 seated Copilot users are omitted.
+ */
+export async function fetchUserTeams(opts: {
+  /** YYYY-MM-DD. Required — the report only exists per day. */
+  day: string;
+  token: string;
+  /** Provide for the enterprise-scoped report. */
+  enterpriseSlug?: string;
+  /** Provide for the organization-scoped report. */
+  orgLogin?: string;
+}): Promise<{ records: UserTeamRecord[]; apiRequestCount: number }> {
+  let apiRequestCount = 0;
+
+  let base: string;
+  if (opts.orgLogin) {
+    base = `${GITHUB_API_BASE}/orgs/${encodeURIComponent(opts.orgLogin)}/copilot/metrics/reports/user-teams-1-day`;
+  } else if (opts.enterpriseSlug) {
+    base = `${GITHUB_API_BASE}/enterprises/${encodeURIComponent(opts.enterpriseSlug)}/copilot/metrics/reports/user-teams-1-day`;
+  } else {
+    throw new Error("fetchUserTeams requires either enterpriseSlug or orgLogin");
+  }
+
+  const url = new URL(base);
+  url.searchParams.set("day", opts.day);
+
+  const reportResponse = await fetchWithRetry(url.toString(), opts.token);
+  apiRequestCount++;
+
+  const reportData: CopilotMetricsReportResponse = await reportResponse.json();
+  if (!reportData.download_links?.length) {
+    return { records: [], apiRequestCount };
+  }
+
+  const records: UserTeamRecord[] = [];
+  for (const link of reportData.download_links) {
+    const fileResponse = await fetch(link);
+    apiRequestCount++;
+    if (!fileResponse.ok) {
+      console.warn(`Failed to download user-teams file: ${fileResponse.status} ${fileResponse.statusText}`);
+      continue;
+    }
+    const content = await fileResponse.text();
+    records.push(...parseNdjson<UserTeamRecord>(content));
+  }
+
+  return { records, apiRequestCount };
+}
+
+/**
+ * Build a `(user_id|day) → team_id` lookup from user-teams rows.
+ *
+ * A user may belong to multiple teams on the same day. The fact tables carry a
+ * single team per user/day, so the lowest `team_id` is chosen deterministically
+ * as the representative team. Use this map to annotate per-user usage records
+ * with `_teamGithubId` before loading.
+ */
+export function buildUserTeamMap(records: UserTeamRecord[]): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const r of records) {
+    if (r.team_id == null) continue;
+    const key = `${r.user_id}|${r.day}`;
+    const existing = map.get(key);
+    if (existing === undefined || r.team_id < existing) {
+      map.set(key, r.team_id);
+    }
+  }
+  return map;
 }

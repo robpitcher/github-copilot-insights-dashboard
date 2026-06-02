@@ -52,8 +52,6 @@ export interface CopilotUsageRecord {
   report_end_day?: string;
   enterprise_id: string;
   organization_id?: string;
-  team_id?: string | number;
-  team_slug?: string;
   user_id: number;
   user_login: string;
   user_initiated_interaction_count: number;
@@ -88,6 +86,13 @@ export interface CopilotUsageRecord {
 
   /** Injected at ingestion time when fetching per-org. Not from the API. */
   _orgLogin?: string;
+
+  /**
+   * Injected at ingestion time by joining the daily `user-teams` report on
+   * `(user_id, day)`. Holds the GitHub team ID for team attribution.
+   * Not part of the per-user usage report schema.
+   */
+  _teamGithubId?: number;
 }
 
 // ── Aggregate Record (enterprise-1-day / organization-1-day NDJSON) ──
@@ -107,6 +112,38 @@ export interface CopilotAggregateRecord {
   /** Injected at ingestion time. Not from the API. */
   _orgLogin?: string;
   _scope?: "enterprise" | "organization";
+}
+
+/**
+ * A single NDJSON line from an entity-level aggregate report
+ * (`enterprise-28-day`, `enterprise-1-day`, `organization-28-day`,
+ * `organization-1-day`). Each line wraps an array of per-day totals under
+ * `day_totals`, as shown in the official enterprise-level schema example.
+ */
+export interface AggregateReportLine {
+  enterprise_id?: string;
+  organization_id?: string;
+  report_start_day?: string;
+  report_end_day?: string;
+  /** Present in the wrapped form: one entry per day. */
+  day_totals?: CopilotAggregateRecord[];
+  /** Present in the flat form: a single day's totals at the top level. */
+  day?: string;
+}
+
+/**
+ * A single NDJSON line from a `user-teams-1-day` report. One row per
+ * `(user, team)` membership for the given day. Teams with fewer than 5 seated
+ * Copilot users are omitted from these reports.
+ */
+export interface UserTeamRecord {
+  user_id: number;
+  user_login?: string;
+  day: string;
+  enterprise_id?: string;
+  organization_id?: string;
+  team_id: number;
+  slug?: string;
 }
 
 export interface PullRequestMetrics {

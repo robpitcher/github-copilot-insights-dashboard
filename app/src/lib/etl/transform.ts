@@ -183,7 +183,7 @@ export function transformToFactUsage(record: CopilotUsageRecord): FactUsageDaily
     day: record.day,
     enterpriseId: parseInt(String(record.enterprise_id), 10) || 0,
     organizationId: record.organization_id ? parseInt(String(record.organization_id), 10) || null : null,
-    sourceTeamGithubId: record.team_id ? parseInt(String(record.team_id), 10) || null : null,
+    sourceTeamGithubId: record._teamGithubId ?? null,
     userId: record.user_id,
     userLogin: record.user_login,
     userInitiatedInteractionCount: record.user_initiated_interaction_count ?? 0,
@@ -207,7 +207,7 @@ export function transformToFactFeatures(record: CopilotUsageRecord): FactFeature
   return (record.totals_by_feature ?? []).map((f) => ({
     day: record.day,
     userId: record.user_id,
-    sourceTeamGithubId: record.team_id ? parseInt(String(record.team_id), 10) || null : null,
+    sourceTeamGithubId: record._teamGithubId ?? null,
     featureName: f.feature,
     userInitiatedInteractionCount: f.user_initiated_interaction_count ?? 0,
     codeGenerationActivityCount: f.code_generation_activity_count ?? 0,
@@ -223,7 +223,7 @@ export function transformToFactIdes(record: CopilotUsageRecord): FactIdeRow[] {
   return (record.totals_by_ide ?? []).map((ide) => ({
     day: record.day,
     userId: record.user_id,
-    sourceTeamGithubId: record.team_id ? parseInt(String(record.team_id), 10) || null : null,
+    sourceTeamGithubId: record._teamGithubId ?? null,
     ideName: ide.ide,
     userInitiatedInteractionCount: ide.user_initiated_interaction_count ?? 0,
     codeGenerationActivityCount: ide.code_generation_activity_count ?? 0,
@@ -253,7 +253,7 @@ export function transformToFactLanguages(record: CopilotUsageRecord): FactLangua
   return (record.totals_by_language_feature ?? []).map((lf) => ({
     day: record.day,
     userId: record.user_id,
-    sourceTeamGithubId: record.team_id ? parseInt(String(record.team_id), 10) || null : null,
+    sourceTeamGithubId: record._teamGithubId ?? null,
     languageName: lf.language,
     featureName: lf.feature,
     userInitiatedInteractionCount: lf.user_initiated_interaction_count ?? 0,
@@ -266,7 +266,7 @@ export function transformToFactModels(record: CopilotUsageRecord): FactModelRow[
   return (record.totals_by_model_feature ?? []).map((mf) => ({
     day: record.day,
     userId: record.user_id,
-    sourceTeamGithubId: record.team_id ? parseInt(String(record.team_id), 10) || null : null,
+    sourceTeamGithubId: record._teamGithubId ?? null,
     modelName: mf.model,
     featureName: mf.feature,
     userInitiatedInteractionCount: mf.user_initiated_interaction_count ?? 0,
@@ -285,7 +285,7 @@ export function transformToFactCli(record: CopilotUsageRecord): FactCliRow[] {
   return [{
     day: record.day,
     userId: record.user_id,
-    sourceTeamGithubId: record.team_id ? parseInt(String(record.team_id), 10) || null : null,
+    sourceTeamGithubId: record._teamGithubId ?? null,
     cliVersion: cli.last_known_cli_version?.cli_version ?? "unknown",
     sessionCount: cli.session_count ?? 0,
     requestCount: cli.request_count ?? 0,
@@ -303,7 +303,7 @@ export function transformToFactLanguageModels(record: CopilotUsageRecord): FactL
   return (record.totals_by_language_model ?? []).map((lm) => ({
     day: record.day,
     userId: record.user_id,
-    sourceTeamGithubId: record.team_id ? parseInt(String(record.team_id), 10) || null : null,
+    sourceTeamGithubId: record._teamGithubId ?? null,
     languageName: lm.language,
     modelName: lm.model,
     codeGenerationActivityCount: lm.code_generation_activity_count ?? 0,
