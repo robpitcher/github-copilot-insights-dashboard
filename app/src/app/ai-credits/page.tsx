@@ -67,7 +67,7 @@ interface AiCreditData {
   seats: { total: number; planCounts: Record<string, number> };
   filters: {
     options: {
-      models: string[];
+      models: Array<{ value: string; label: string }>;
       orgs: string[];
       users: Array<{ login: string; displayLabel: string }>;
       teams: string[];
@@ -142,6 +142,7 @@ export default function AiCreditsPage() {
   const [userFilter, setUserFilter] = useState("");
   const [teamFilter, setTeamFilter] = useState("");
   const [costCenterFilter, setCostCenterFilter] = useState("");
+  const [trendGranularity, setTrendGranularity] = useState<"daily" | "weekly" | "monthly" | "3m" | "6m">("monthly");
   const [data, setData] = useState<AiCreditData | null>(null);
   const [dashboardOverlay, setDashboardOverlay] = useState<DashboardOverlay | null>(null);
   const [prOverlay, setPrOverlay] = useState<PullRequestsOverlay | null>(null);
@@ -185,7 +186,7 @@ export default function AiCreditsPage() {
   useEffect(() => {
     if (!data) return;
     const { options } = data.filters;
-    if (modelFilter && !options.models.includes(modelFilter)) setModelFilter("");
+    if (modelFilter && !options.models.some((m) => m.value === modelFilter)) setModelFilter("");
     if (orgFilter && !options.orgs.includes(orgFilter)) setOrgFilter("");
     if (userFilter && !options.users.some((u) => u.login === userFilter)) setUserFilter("");
     if (teamFilter && !options.teams.includes(teamFilter)) setTeamFilter("");
@@ -288,20 +289,49 @@ export default function AiCreditsPage() {
     };
   }, [data, t]);
 
-  const monthlySpendTrend = useMemo(() => {
-    if (!data || data.monthlyTrend.length === 0) return null;
-    return {
-      labels: data.monthlyTrend.map((m) => m.label),
+  const netSpendTrend = useMemo(() => {
+    if (!data) return null;
+    const borderColor = "#6366f1";
+    const backgroundColor = "rgba(99,102,241,0.2)";
+    const mkLine = (labels: string[], values: number[]) => ({
+      labels,
       datasets: [{
         label: t("aiCredits.netSpend"),
-        data: data.monthlyTrend.map((m) => m.netAmount),
-        borderColor: "#6366f1",
-        backgroundColor: "rgba(99,102,241,0.2)",
+        data: values,
+        borderColor,
+        backgroundColor,
         fill: true,
         tension: 0.3,
       }],
-    };
-  }, [data, t]);
+    });
+
+    if (trendGranularity === "daily") {
+      if (data.dailyTrend.length === 0) return null;
+      return mkLine(
+        data.dailyTrend.map((d) => d.date.slice(5)),
+        data.dailyTrend.map((d) => Number(d.netAmount.toFixed(2))),
+      );
+    }
+
+    if (trendGranularity === "weekly") {
+      if (data.dailyTrend.length === 0) return null;
+      const weeks = new Map<number, number>();
+      for (const d of data.dailyTrend) {
+        const dayOfMonth = Number(d.date.slice(8, 10));
+        const week = Math.floor((dayOfMonth - 1) / 7) + 1;
+        weeks.set(week, (weeks.get(week) ?? 0) + d.netAmount);
+      }
+      const entries = Array.from(weeks.entries()).sort((a, b) => a[0] - b[0]);
+      return mkLine(
+        entries.map(([w]) => t("aiCredits.weekLabel", String(w))),
+        entries.map(([, v]) => Number(v.toFixed(2))),
+      );
+    }
+
+    const months = trendGranularity === "3m" ? data.monthlyTrend.slice(-3) : data.monthlyTrend;
+    if (months.length === 0) return null;
+    return mkLine(months.map((m) => m.label), months.map((m) => m.netAmount));
+  }, [data, t, trendGranularity]);
 
   const topDriversBar = useMemo(() => {
     if (!data || data.perModelBreakdown.length === 0) return null;
@@ -418,6 +448,17 @@ export default function AiCreditsPage() {
   const mergedPrs = prOverlay?.totals?.totalMerged ?? 0;
   const reviewedPrs = prOverlay?.totals?.totalReviewed ?? 0;
 
+  // Additional business-value metrics for AI usage governance.
+  const activeUsers = data.perUserBreakdown.length;
+  const modelsInUse = data.perModelBreakdown.length;
+  const costPerActiveUser = activeUsers > 0 ? totals.netAmount / activeUsers : 0;
+  const creditsPerActiveUser = activeUsers > 0 ? totals.grossCredits / activeUsers : 0;
+  const topModelSharePct = totals.netAmount > 0 && data.perModelBreakdown.length > 0
+    ? Math.round((data.perModelBreakdown[0].netAmount / totals.netAmount) * 100)
+    : 0;
+  // "Additional usage" mirrors the official report: spend beyond included credits.
+  const additionalUsage = totals.netAmount;
+
   return (
     <div ref={reportRef} className="space-y-6">
       <ConfigurationBanner />
@@ -458,7 +499,7 @@ export default function AiCreditsPage() {
             allLabel={t("common.all")}
             value={modelFilter}
             onChange={setModelFilter}
-            options={data.filters.options.models.map((v) => ({ value: v, label: v }))}
+            options={data.filters.options.models.map((m) => ({ value: m.value, label: m.label }))}
           />
           <SelectFilter
             label={t("aiCredits.costCenter")}
@@ -466,6 +507,7 @@ export default function AiCreditsPage() {
             value={costCenterFilter}
             onChange={setCostCenterFilter}
             options={data.filters.options.costCenters.map((v) => ({ value: v, label: v }))}
+            emptyHint={t("aiCredits.noFilterData")}
           />
           <SelectFilter
             label={t("aiCredits.organization")}
@@ -473,6 +515,7 @@ export default function AiCreditsPage() {
             value={orgFilter}
             onChange={setOrgFilter}
             options={data.filters.options.orgs.map((v) => ({ value: v, label: v }))}
+            emptyHint={t("aiCredits.noFilterData")}
           />
           <SelectFilter
             label={t("aiCredits.user")}
@@ -480,6 +523,7 @@ export default function AiCreditsPage() {
             value={userFilter}
             onChange={setUserFilter}
             options={data.filters.options.users.map((u) => ({ value: u.login, label: u.displayLabel }))}
+            emptyHint={t("aiCredits.noFilterData")}
           />
           <SelectFilter
             label={t("aiCredits.team")}
@@ -487,6 +531,7 @@ export default function AiCreditsPage() {
             value={teamFilter}
             onChange={setTeamFilter}
             options={data.filters.options.teams.map((v) => ({ value: v, label: v }))}
+            emptyHint={t("aiCredits.noFilterData")}
           />
         </div>
       </Card>
@@ -499,6 +544,17 @@ export default function AiCreditsPage() {
         <Kpi label={t("aiCredits.discountCoverage")} value={`${totals.discountCoveragePct}%`} color={totals.discountCoveragePct >= 80 ? "text-green-600" : totals.discountCoveragePct >= 50 ? "text-amber-600" : "text-indigo-600"} />
         <Kpi label={t("aiCredits.creditsPerSeat")} value={fmtNum(totals.creditsPerSeat)} />
       </div>
+
+      <Card title={t("aiCredits.usageInsights")} subtitle={t("aiCredits.usageInsightsDesc")}>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          <Kpi label={t("aiCredits.activeUsers")} value={fmtNum(activeUsers)} />
+          <Kpi label={t("aiCredits.costPerActiveUser")} value={fmt$(costPerActiveUser)} color="text-indigo-600" />
+          <Kpi label={t("aiCredits.creditsPerActiveUser")} value={fmtNum(Math.round(creditsPerActiveUser))} />
+          <Kpi label={t("aiCredits.modelsInUse")} value={fmtNum(modelsInUse)} />
+          <Kpi label={t("aiCredits.topModelShare")} value={`${topModelSharePct}%`} color={topModelSharePct >= 60 ? "text-amber-600" : "text-gray-900"} />
+          <Kpi label={t("aiCredits.additionalUsage")} value={fmt$(additionalUsage)} color={additionalUsage > 0 ? "text-indigo-600" : "text-green-600"} />
+        </div>
+      </Card>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card title={t("aiCredits.execSummary")} subtitle={t("aiCredits.execSummaryDesc")}>
@@ -613,8 +669,24 @@ export default function AiCreditsPage() {
           )}
         </Card>
         <Card title={t("aiCredits.monthlyTrend")} subtitle={t("aiCredits.monthlyTrendDesc")}>
-          {monthlySpendTrend ? (
-            <div className="h-[280px]"><Line data={monthlySpendTrend} options={{ ...barOpts, maintainAspectRatio: false }} /></div>
+          <div className="mb-3 flex items-center justify-end">
+            <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+              <span className="font-medium">{t("aiCredits.granularity")}</span>
+              <select
+                value={trendGranularity}
+                onChange={(e) => setTrendGranularity(e.target.value as typeof trendGranularity)}
+                className="rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 shadow-xs focus:border-blue-500 focus:outline-hidden dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+              >
+                <option value="daily">{t("aiCredits.granularityDaily")}</option>
+                <option value="weekly">{t("aiCredits.granularityWeekly")}</option>
+                <option value="monthly">{t("aiCredits.granularityMonthly")}</option>
+                <option value="3m">{t("aiCredits.granularity3m")}</option>
+                <option value="6m">{t("aiCredits.granularity6m")}</option>
+              </select>
+            </label>
+          </div>
+          {netSpendTrend ? (
+            <div className="h-[280px]"><Line data={netSpendTrend} options={{ ...barOpts, maintainAspectRatio: false }} /></div>
           ) : (
             <p className="py-8 text-center text-sm text-gray-400">{t("aiCredits.noMonthlyTrend")}</p>
           )}
@@ -784,22 +856,26 @@ function SelectFilter({
   value,
   onChange,
   options,
+  emptyHint,
 }: {
   label: string;
   allLabel: string;
   value: string;
   onChange: (value: string) => void;
   options: Array<{ value: string; label: string }>;
+  emptyHint?: string;
 }) {
+  const hasOptions = options.length > 0;
   return (
     <label className="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-300">
       <span className="font-medium">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 shadow-xs focus:border-blue-500 focus:outline-hidden dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+        disabled={!hasOptions}
+        className="rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 shadow-xs focus:border-blue-500 focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
       >
-        <option value="">{allLabel}</option>
+        <option value="">{hasOptions ? allLabel : (emptyHint ?? allLabel)}</option>
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}

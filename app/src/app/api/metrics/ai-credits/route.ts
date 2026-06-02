@@ -313,8 +313,10 @@ export async function GET(request: NextRequest) {
     }
 
     // 3. Filter option lists (from unfiltered items).
+    // Keep raw model identifiers as filter values (matching uses the raw id);
+    // display names are resolved separately for the labels.
     const filterOptions = {
-      models: Array.from(new Set(usageItems.map((i) => i.model).filter((v): v is string => Boolean(v)))).map(getModelDisplayName).sort((a, b) => a.localeCompare(b)),
+      models: Array.from(new Set(usageItems.map((i) => i.model).filter((v): v is string => Boolean(v)))).sort((a, b) => getModelDisplayName(a).localeCompare(getModelDisplayName(b))),
       orgs: Array.from(new Set(usageItems.map((i) => i.orgName).filter((v): v is string => Boolean(v)))).sort((a, b) => a.localeCompare(b)),
       users: Array.from(new Set(usageItems.map((i) => i.userLogin).filter((v): v is string => Boolean(v)))).sort((a, b) => a.localeCompare(b)),
       teams: Array.from(new Set(usageItems.map((i) => i.teamName).filter((v): v is string => Boolean(v)))).sort((a, b) => a.localeCompare(b)),
@@ -459,7 +461,7 @@ export async function GET(request: NextRequest) {
       },
       filters: {
         options: {
-          models: filterOptions.models,
+          models: filterOptions.models.map((value) => ({ value, label: getModelDisplayName(value) })),
           orgs: filterOptions.orgs,
           users: filterOptions.users.map((login) => ({
             login,
