@@ -9,6 +9,7 @@ import {
   GitPullRequest,
   Layers,
   Sparkles,
+  Coins,
   Contact,
   Network,
   ArrowRight,
@@ -78,6 +79,13 @@ export default function LandingPage() {
       href: "/premium-requests",
       icon: Sparkles,
       color: "text-amber-600 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400",
+    },
+    {
+      title: t("landing.aiCredits"),
+      description: t("landing.aiCreditsDesc"),
+      href: "/ai-credits",
+      icon: Coins,
+      color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400",
     },
     {
       title: t("landing.usersTitle"),

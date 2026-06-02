@@ -189,6 +189,41 @@ export const factCopilotUsageDaily = pgTable(
   ]
 );
 
+// AI Credit usage snapshots (GitHub usage-based billing, effective June 1 2026).
+// Sourced live from the /settings/billing/ai_credit/usage endpoints and persisted
+// as a per-period snapshot so trailing trends survive the premium_request → ai_credit
+// endpoint split (each endpoint only returns its own era of data).
+export const factAiCreditUsage = pgTable(
+  "fact_ai_credit_usage",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    enterpriseSlug: varchar("enterprise_slug", { length: 255 }).notNull(),
+    periodYear: smallint("period_year").notNull(),
+    periodMonth: smallint("period_month").notNull(),
+    usageDate: date("usage_date"),
+    product: varchar("product", { length: 255 }).notNull().default("Copilot"),
+    sku: varchar("sku", { length: 255 }).notNull().default(""),
+    model: varchar("model", { length: 255 }).notNull().default(""),
+    costCenter: varchar("cost_center", { length: 255 }),
+    orgName: varchar("org_name", { length: 255 }),
+    userLogin: varchar("user_login", { length: 255 }),
+    teamName: varchar("team_name", { length: 255 }),
+    unitType: varchar("unit_type", { length: 64 }).notNull().default("ai-credits"),
+    pricePerUnit: numeric("price_per_unit").notNull().default("0"),
+    grossQuantity: numeric("gross_quantity").notNull().default("0"),
+    discountQuantity: numeric("discount_quantity").notNull().default("0"),
+    netQuantity: numeric("net_quantity").notNull().default("0"),
+    grossAmount: numeric("gross_amount").notNull().default("0"),
+    discountAmount: numeric("discount_amount").notNull().default("0"),
+    netAmount: numeric("net_amount").notNull().default("0"),
+    ingestedAt: timestamp("ingested_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_fact_ai_credit_period").on(table.enterpriseSlug, table.periodYear, table.periodMonth),
+    index("idx_fact_ai_credit_model").on(table.model),
+  ]
+);
+
 export const factUserFeatureDaily = pgTable(
   "fact_user_feature_daily",
   {

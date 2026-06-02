@@ -120,6 +120,13 @@
       "when": 1717344000000,
       "tag": "20260602160000_ai_adoption_cohorts",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "8",
+      "when": 1717347600000,
+      "tag": "20260602170000_ai_credit_usage",
+      "breakpoints": true
     }
   ]
 }

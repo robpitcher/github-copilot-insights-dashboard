@@ -332,7 +332,13 @@ export default function ConfigurationPage() {
               </tr>
               <tr>
                 <td className="px-3 py-2 font-mono text-gray-700 dark:text-gray-300">GET /enterprises/{"{slug}"}/settings/billing/premium_request/usage</td>
-                <td className="px-3 py-2 text-gray-500 dark:text-gray-400">Premium request billing usage per user</td>
+                <td className="px-3 py-2 text-gray-500 dark:text-gray-400">Premium request billing usage per user (deprecated — historical usage before June 1, 2026 only)</td>
+                <td className="px-3 py-2 text-gray-500 dark:text-gray-400">2026-03-10</td>
+                <td className="px-3 py-2"><code className="rounded-sm bg-gray-100 px-1 text-gray-700 dark:bg-gray-700 dark:text-gray-300">manage_billing:copilot</code></td>
+              </tr>
+              <tr>
+                <td className="px-3 py-2 font-mono text-gray-700 dark:text-gray-300">GET /enterprises/{"{slug}"}/settings/billing/ai_credit/usage</td>
+                <td className="px-3 py-2 text-gray-500 dark:text-gray-400">AI Credit billing usage (usage-based billing, activity after June 1, 2026)</td>
                 <td className="px-3 py-2 text-gray-500 dark:text-gray-400">2026-03-10</td>
                 <td className="px-3 py-2"><code className="rounded-sm bg-gray-100 px-1 text-gray-700 dark:bg-gray-700 dark:text-gray-300">manage_billing:copilot</code></td>
               </tr>
