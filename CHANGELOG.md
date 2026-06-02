@@ -7,9 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **AI Adoption dashboard** — new `/ai-adoption` report and `/api/metrics/ai-adoption` endpoint with user-level cohort classification (`noCohort`, `codeFirst`, `agentFirst`, `multiAgent`) and progression/per-cohort analytics
+- **AI Credits dashboard** — new `/ai-credits` report and `/api/metrics/ai-credits` endpoint using GitHub AI credit billing usage with model/org/team/user breakdowns and trend views
+- **AI credit snapshot fact table** — `fact_ai_credit_usage` and migration `20260602170000_ai_credit_usage.sql` to persist billing snapshots for trailing-month analysis
+- **Shared report context banner** — `ReportBanner` component integrated across report pages for a unified “About this report” section
+
 ### Changed
 
 - **Package manager** — migrated from npm to pnpm; lockfile is now `app/pnpm-lock.yaml`, dependency overrides and build-script approvals live in `app/pnpm-workspace.yaml`, and the Docker build, CI workflows, and devcontainer use pnpm via Corepack
+- **Sidebar navigation order** — reports now appear in impact-first order with AI Adoption and AI Credits in the primary navigation stack
+- **Sidebar branding icon** — switched to the Copilot Insights icon in the sidebar header
+- **AI Credits KPIs** — replaced the Credits/Seat KPI with a credit-pool utilization view (consumed vs remaining included pool)
+- **Premium Requests positioning** — kept as a deprecated historical report in navigation and documentation
 
 ## [0.8.0] — 2026-04-12
 

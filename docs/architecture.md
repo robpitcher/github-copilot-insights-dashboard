@@ -20,7 +20,7 @@ graph TD
     API -- "Live proxy" --> GH
 
     PG[("PostgreSQL 18<br/>Star Schema<br/>Azure Flexible Server")]
-    GH["GitHub REST API<br/>api.github.com<br/>• Usage Metrics<br/>• Billing / Seats<br/>• Premium Requests<br/>• Enterprise Teams"]
+    GH["GitHub REST API<br/>api.github.com<br/>• Usage Metrics<br/>• Billing / Seats<br/>• AI Credits<br/>• Premium Requests (historical)<br/>• Enterprise Teams"]
 ```
 
 ## Component Architecture
@@ -33,6 +33,7 @@ All dashboard pages are client components using `"use client"` that fetch data f
 |---|---|
 | `components/layout/sidebar.tsx` | Main navigation sidebar with theme/locale switchers |
 | `components/layout/report-filters.tsx` | Shared date range picker + org/team/user multi-select filters |
+| `components/layout/report-banner.tsx` | Shared “About this report” banner shown on report pages |
 | `components/layout/breadcrumb.tsx` | Page breadcrumb navigation |
 | `components/layout/configuration-banner.tsx` | Banner shown when GitHub token or enterprise slug is missing |
 | `components/ui/data-table.tsx` | Sortable, paginated data table with search, filter, and CSV/Excel export |
@@ -55,11 +56,13 @@ All API routes live under `app/src/app/api/` and use Zod for request validation.
 | `/api/metrics/dashboard` | GET | Main usage metrics (active users, completions, models, languages) |
 | `/api/metrics/code-generation` | GET | LOC breakdown by feature, model, language |
 | `/api/metrics/agents` | GET | Agent adoption, IDE vs Coding Agent breakdown |
+| `/api/metrics/ai-adoption` | GET | AI adoption cohorts (code-first, agent-first, multi-agent) |
 | `/api/metrics/pull-requests` | GET | PR creation, merge, Copilot code review & autofix metrics |
 | `/api/metrics/cli` | GET | CLI sessions, requests, token consumption |
 | `/api/metrics/models` | GET | Model catalog with usage stats |
 | `/api/metrics/seats` | GET | Live seat data from GitHub Billing API |
-| `/api/metrics/premium-requests` | GET | Live premium request data from GitHub Billing API |
+| `/api/metrics/ai-credits` | GET | AI credit billing usage, included pool computation, and breakdowns |
+| `/api/metrics/premium-requests` | GET | Historical premium request data for pre-AI-credit periods |
 | `/api/users` | GET | User-level activity data merged with GitHub license API |
 | `/api/filters` | GET | Available filter options (orgs, teams, users) |
 | `/api/data-range` | GET | Ingested data date range for banners |
@@ -134,6 +137,7 @@ The database follows a **star schema** design optimized for analytics queries.
 | `fact_user_language_model_daily` | One row per user per language per model per day |
 | `fact_cli_daily` | One row per user per CLI version per day (sessions, requests, tokens) |
 | `fact_org_aggregate_daily` | One row per org per day — PR metrics, Copilot code review & autofix data |
+| `fact_ai_credit_usage` | Monthly AI credit billing snapshot rows for trailing trends and breakdown analytics |
 
 ### Supporting Tables
 
@@ -265,7 +269,7 @@ graph LR
     E --> F["React pages<br/>fetch() + Chart.js"]
 ```
 
-### Live Data (Seats, Premium Requests, Enterprise Teams)
+### Live and Snapshot Data (Seats, AI Credits, Premium Requests, Enterprise Teams)
 
 ```mermaid
 graph LR
@@ -274,6 +278,8 @@ graph LR
 ```
 
 Seats, Premium Requests, and Enterprise Teams pages call GitHub APIs directly on each request (no database caching) to ensure real-time data. These pages display a "Live from GitHub API" data source banner.
+
+AI Credits uses a hybrid approach: selected-month usage is fetched from GitHub's `/settings/billing/ai_credit/usage` endpoint, then persisted to `fact_ai_credit_usage` so monthly trends remain available across endpoint-era transitions.
 
 ## Configuration
 

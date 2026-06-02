@@ -28,10 +28,12 @@ azd up                   # Full provision + deploy (first time)
 app/                      # Next.js 16 application
   src/
     app/                  # Pages (App Router) + API routes (/api/*)
+      ai-adoption/        # AI adoption cohorts report
+      ai-credits/         # AI credits usage + billing report
       enterprise-teams/   # Enterprise Teams page
       settings/app-info/  # Application Info settings page
     components/           # Reusable React components
-      layout/             # Sidebar, breadcrumb, report filters
+      layout/             # Sidebar, breadcrumb, report filters, report banner
       ui/                 # DataTable, EmptyState, and shared UI
     lib/
       db/                 # Drizzle ORM: schema, connection, settings
@@ -108,6 +110,7 @@ console.error("Failed to fetch data:", error);
 
 - Server Components by default — add `"use client"` only when state/effects are needed
 - Dashboard pages: `ReportFilters` for date range + user + org + team filter, `DataTable` for tabular data
+- Report pages include a shared `ReportBanner` directly after `DataSourceBanner`
 - Charts: `react-chartjs-2` wrappers (`Line`, `Bar`, `Doughnut`)
 - Use `useChartOptions()` from `@/lib/theme/chart-theme` for theme-aware Chart.js options
 - Use `useTranslation()` from `@/lib/i18n/locale-provider` for i18n strings

@@ -14,7 +14,7 @@ GitHub Copilot is transforming how teams write code — but without visibility i
 
 - **Adoption tracking** — see which teams and users are actively using Copilot, and where adoption lags
 - **License optimization** — identify unused seats and potential savings across your enterprise
-- **Model intelligence** — understand which AI models drive the most value and how premium request budgets are consumed
+- **Model intelligence** — understand which AI models drive the most value and how AI credit budgets are consumed
 - **Productivity metrics** — measure code completions, agent usage, PR impact, and CLI adoption in one place
 - **Enterprise governance** — role-based access, audit logging, and team-level filtering for compliance
 
@@ -26,9 +26,11 @@ GitHub Copilot is transforming how teams write code — but without visibility i
 | **Code Generation** | `/code-generation` | LOC added/deleted by user vs agent, breakdowns by feature, model, and language |
 | **PR & Autofix** | `/pull-requests` | AI-assisted PR creation, Copilot code review suggestions, autofix analytics, and merge metrics |
 | **Agent Impact** | `/agents` | Agent adoption rate, IDE Agent vs GitHub Coding Agent breakdown, top agent users |
+| **AI Adoption** | `/ai-adoption` | Cohort-based adoption analysis (code-first, agent-first, multi-agent), progression trends, and per-cohort productivity |
 | **CLI Impact** | `/cli` | CLI adoption, session/request volumes, token consumption, version distribution |
 | **Copilot Licensing** | `/seats` | Seat assignments, license utilization, plan distribution, savings opportunities (live from GitHub API) |
-| **Premium Requests** | `/premium-requests` | Premium model request consumption, quota tracking, and per-user breakdown (live from GitHub API) |
+| **AI Credits** | `/ai-credits` | AI credit consumption, included pool utilization, model/org/team/user breakdowns, and monthly trends |
+| **Premium Requests** | `/premium-requests` | Historical premium-request usage report retained for pre-usage-based-billing periods |
 | **Models** | `/models` | AI model catalog with usage stats, premium vs included tiers, and feature breakdown |
 | **Users** | `/users` | Individual user activity explorer with license status, engagement patterns, and feature adoption |
 | **Enterprise Teams** | `/enterprise-teams` | Team management with member sync from GitHub Enterprise Teams API |
@@ -41,6 +43,7 @@ GitHub Copilot is transforming how teams write code — but without visibility i
 - **PDF export** — one-click PDF generation for all dashboard pages
 - **Multi-select filters** — filter charts by organization, enterprise team, user, model, or language
 - **Configuration banner** — shown when GitHub token or enterprise slug is missing
+- **About report context** — each report includes an “About this report” banner with metric scope/context
 - **Audit logging** — tracks admin actions for compliance
 - **Dashboard auth gate** — optional password protection for all dashboard pages
 
@@ -76,6 +79,12 @@ Agent adoption rate, IDE Agent vs GitHub Coding Agent breakdown, and top agent u
 
 ![Agent Impact](docs/screenshots/agent-impact.png)
 
+### AI Adoption
+
+User adoption cohorts (code-first, agent-first, multi-agent), progression over time, and per-cohort productivity.
+
+![AI Adoption](docs/screenshots/ai-adoption.png)
+
 ### CLI Impact
 
 GitHub Copilot CLI adoption, session and request volumes, and token consumption.
@@ -88,9 +97,15 @@ License utilization, seat costs, and savings opportunities — live from GitHub 
 
 ![Copilot Licensing](docs/screenshots/copilot-licensing.png)
 
-### Premium Requests
+### AI Credits
 
-Premium model request consumption, quota allocation, and per-user breakdown.
+AI credit usage, included credit pool utilization, and billing breakdowns by model, org, team, and user.
+
+![AI Credits](docs/screenshots/ai-credits.png)
+
+### Premium Requests (Historical)
+
+Premium request consumption report for historical periods before AI credit billing took effect.
 
 ![Premium Requests](docs/screenshots/premium-requests.png)
 
@@ -128,9 +143,9 @@ Schedule automatic syncs, trigger manual pulls, or upload NDJSON exports.
 
 - **Frontend**: Next.js 16.2 App Router, React 19.2, Tailwind CSS 4.2, Chart.js 4.5
 - **Backend**: Next.js API routes, Drizzle ORM 0.45, Zod 4.3
-- **Database**: PostgreSQL 18 (star schema — 10 dimensions + 8 fact tables)
+- **Database**: PostgreSQL 18 (star schema — 10 dimensions + 9 fact tables)
 - **ETL**: Custom ingest pipeline with GitHub Copilot Usage Metrics API (v2026-03-10)
-- **Live data**: Seats and Premium Requests proxied directly from GitHub Billing API
+- **Billing data**: Seats fetched live; AI Credits fetched from GitHub billing API and snapshotted for trend continuity
 - **Infrastructure**: Azure Container Apps, Azure Database for PostgreSQL, Azure Container Registry, Key Vault
 
 See [docs/architecture.md](docs/architecture.md) for detailed architecture documentation.
@@ -214,9 +229,11 @@ ghcp-dashboard/
 │   │   │   ├── code-generation/  # Code generation report
 │   │   │   ├── pull-requests/    # PR & Autofix report
 │   │   │   ├── agents/           # Agent impact report
+│   │   │   ├── ai-adoption/      # AI adoption cohorts report
 │   │   │   ├── cli/              # CLI impact report
 │   │   │   ├── seats/            # Licensing page (live)
-│   │   │   ├── premium-requests/ # Premium requests page (live)
+│   │   │   ├── ai-credits/       # AI credits usage + billing dashboard
+│   │   │   ├── premium-requests/ # Historical premium requests report
 │   │   │   ├── models/           # AI model catalog
 │   │   │   ├── users/            # User explorer
 │   │   │   ├── enterprise-teams/ # Enterprise team management
