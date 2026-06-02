@@ -101,6 +101,56 @@ function num(v: number | undefined): number {
   return typeof v === "number" && Number.isFinite(v) ? v : 0;
 }
 
+/**
+ * Per-seat monthly included AI Credit entitlement (USD) under usage-based
+ * billing, as published in the GitHub announcement:
+ * https://github.blog/news-insights/company-news/github-copilot-is-moving-to-usage-based-billing/
+ *
+ * Base entitlement matches each plan's seat price. Existing Copilot Business and
+ * Copilot Enterprise customers receive a higher *promotional* included amount
+ * for June, July, and August 2026.
+ */
+const INCLUDED_CREDIT_PER_SEAT = {
+  base: { business: 19, enterprise: 39 },
+  promotional: { business: 30, enterprise: 70 },
+} as const;
+
+/** Promotional window (year 2026, months June–August) for businesses/enterprises. */
+const PROMO_YEAR = 2026;
+const PROMO_MONTHS = new Set([6, 7, 8]);
+const PROMO_PERIOD_LABEL = "June–August 2026";
+
+function isPromotionalPeriod(year: number, month: number): boolean {
+  return year === PROMO_YEAR && PROMO_MONTHS.has(month);
+}
+
+/**
+ * Derive the included AI Credit pool (entitlement) from seat counts and the
+ * selected period. GitHub does not (yet) expose a dedicated live endpoint for
+ * the pool total, so it is computed per seat type from the published rates and
+ * the pooled-included-usage model described in the announcement above.
+ */
+function computeCreditPool(
+  planCounts: Record<string, number>,
+  year: number,
+  month: number
+) {
+  const promotional = isPromotionalPeriod(year, month);
+  const rates = promotional
+    ? INCLUDED_CREDIT_PER_SEAT.promotional
+    : INCLUDED_CREDIT_PER_SEAT.base;
+  const businessSeats = planCounts.business ?? 0;
+  const enterpriseSeats = planCounts.enterprise ?? 0;
+  const total = businessSeats * rates.business + enterpriseSeats * rates.enterprise;
+  return {
+    total: round2(total),
+    promotional,
+    promotionalPeriod: promotional ? PROMO_PERIOD_LABEL : null,
+    perSeat: { business: rates.business, enterprise: rates.enterprise },
+    seats: { business: businessSeats, enterprise: enterpriseSeats },
+  };
+}
+
 /** Normalize a raw API item into the shared snapshot shape. */
 function normalizeItem(item: AiCreditUsageItem): NormalizedAiCreditItem {
   return {
@@ -386,6 +436,17 @@ export async function GET(request: NextRequest) {
     const effectivePricePerCredit = grossCredits > 0 ? round2(totals.grossAmount / grossCredits) : 0;
     const creditsPerSeat = totalSeats > 0 ? Math.round((grossCredits / totalSeats) * 10) / 10 : 0;
 
+    // Included AI Credit pool (entitlement) derived from seat mix + period rates.
+    const poolBase = computeCreditPool(planCounts, year, month);
+    const poolConsumedAmount = round2(totals.discountAmount);
+    const creditPool = {
+      ...poolBase,
+      consumedAmount: poolConsumedAmount,
+      remainingAmount: round2(Math.max(0, poolBase.total - poolConsumedAmount)),
+      utilizationPct:
+        poolBase.total > 0 ? Math.round((poolConsumedAmount / poolBase.total) * 100) : 0,
+    };
+
     // 6. Trailing 6-month trend — DB snapshots first, live API fallback per month.
     const monthPoints = Array.from({ length: 6 }, (_, idx) => shiftMonth(year, month, idx - 5));
     const dbTotals = await getAiCreditMonthlyTotalsFromDb(enterpriseSlug, monthPoints);
@@ -459,6 +520,7 @@ export async function GET(request: NextRequest) {
         total: totalSeats,
         planCounts,
       },
+      creditPool,
       filters: {
         options: {
           models: filterOptions.models.map((value) => ({ value, label: getModelDisplayName(value) })),

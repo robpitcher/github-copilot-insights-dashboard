@@ -53,11 +53,21 @@ interface MonthlyTrendPoint {
   netAmount: number;
 }
 
-interface ChangeVsPrevious {
-  creditsDelta: number;
+interface ChangeVsPrevious {  creditsDelta: number;
   creditsDeltaPct: number | null;
   netAmountDelta: number;
   netAmountDeltaPct: number | null;
+}
+
+interface CreditPool {
+  total: number;
+  promotional: boolean;
+  promotionalPeriod: string | null;
+  perSeat: { business: number; enterprise: number };
+  seats: { business: number; enterprise: number };
+  consumedAmount: number;
+  remainingAmount: number;
+  utilizationPct: number;
 }
 
 interface AiCreditData {
@@ -65,6 +75,7 @@ interface AiCreditData {
   unitType: string;
   totals: AiCreditTotals;
   seats: { total: number; planCounts: Record<string, number> };
+  creditPool: CreditPool;
   filters: {
     options: {
       models: Array<{ value: string; label: string }>;
@@ -610,6 +621,44 @@ export default function AiCreditsPage() {
           )}
         </Card>
       </div>
+
+      <Card title={t("aiCredits.creditPool")} subtitle={t("aiCredits.creditPoolDesc")}>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-md bg-gray-50 p-2 text-center dark:bg-gray-700/50">
+            <p className="text-xs text-gray-500 dark:text-gray-400">{t("aiCredits.poolTotal")}</p>
+            <p className="text-lg font-bold text-green-600 dark:text-green-400">{fmt$(data.creditPool.total)}</p>
+          </div>
+          <div className="rounded-md bg-gray-50 p-2 text-center dark:bg-gray-700/50">
+            <p className="text-xs text-gray-500 dark:text-gray-400">{t("aiCredits.poolConsumed")}</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{fmt$(data.creditPool.consumedAmount)}</p>
+          </div>
+          <div className="rounded-md bg-gray-50 p-2 text-center dark:bg-gray-700/50">
+            <p className="text-xs text-gray-500 dark:text-gray-400">{t("aiCredits.poolRemaining")}</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{fmt$(data.creditPool.remainingAmount)}</p>
+          </div>
+          <div className="rounded-md bg-gray-50 p-2 text-center dark:bg-gray-700/50">
+            <p className="text-xs text-gray-500 dark:text-gray-400">{t("aiCredits.poolUtilization")}</p>
+            <p className={`text-lg font-bold ${data.creditPool.utilizationPct >= 90 ? "text-amber-600 dark:text-amber-400" : "text-indigo-600 dark:text-indigo-400"}`}>{data.creditPool.utilizationPct}%</p>
+          </div>
+        </div>
+        <div className="mt-3 space-y-1 border-t border-gray-100 pt-3 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
+          <p>
+            {t(
+              "aiCredits.poolPerSeat",
+              fmt$(data.creditPool.perSeat.business),
+              String(data.creditPool.seats.business),
+              fmt$(data.creditPool.perSeat.enterprise),
+              String(data.creditPool.seats.enterprise)
+            )}
+          </p>
+          {data.creditPool.promotional && data.creditPool.promotionalPeriod && (
+            <p className="font-medium text-green-600 dark:text-green-400">
+              {t("aiCredits.poolPromotional", data.creditPool.promotionalPeriod)}
+            </p>
+          )}
+          <p>{t("aiCredits.additionalUsage")}: <span className="font-medium text-gray-900 dark:text-gray-100">{fmt$(additionalUsage)}</span></p>
+        </div>
+      </Card>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card title={t("aiCredits.creditComposition")} subtitle={t("aiCredits.creditCompositionDesc")}>
