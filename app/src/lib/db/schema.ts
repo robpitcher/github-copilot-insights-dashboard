@@ -174,6 +174,10 @@ export const factCopilotUsageDaily = pgTable(
     locSuggestedToDeleteSum: integer("loc_suggested_to_delete_sum").default(0).notNull(),
     locAddedSum: integer("loc_added_sum").default(0).notNull(),
     locDeletedSum: integer("loc_deleted_sum").default(0).notNull(),
+    // AI adoption phase (cohorts, Copilot Usage Metrics API 2026-05-29).
+    // 0 = no cohort, 1 = code-first, 2 = agent-first, 3 = multi-agent.
+    aiAdoptionPhase: smallint("ai_adoption_phase"),
+    aiAdoptionPhaseVersion: varchar("ai_adoption_phase_version", { length: 10 }),
   },
   (table) => [
     uniqueIndex("idx_fact_usage_unique").on(table.day, table.enterpriseId, table.userId),
@@ -181,6 +185,7 @@ export const factCopilotUsageDaily = pgTable(
     index("idx_fact_usage_user_id").on(table.userId),
     index("idx_fact_usage_enterprise_id").on(table.enterpriseId),
     index("idx_fact_usage_source_team_github_id").on(table.sourceTeamGithubId),
+    index("idx_fact_usage_ai_phase").on(table.day, table.aiAdoptionPhase),
   ]
 );
 

@@ -950,6 +950,49 @@ const METRICS: MetricDef[] = [
     calculation: "Resolves team members from dim_enterprise_team_member, then filters fact tables by user_id IN (team member user IDs).",
     source: "dim_enterprise_team_member → user_id filter on fact tables",
   },
+
+  // ── AI Adoption Cohorts ──
+  {
+    name: "Cohort Distribution",
+    page: "AI Adoption Cohorts",
+    chart: "Doughnut Chart",
+    description: "Breakdown of users by their current AI adoption phase: no cohort, code-first, agent-first, or multi-agent.",
+    calculation: "Each user's most recent classified phase within the period (latest day with a non-null ai_adoption_phase), counted once per phase.",
+    source: "fact_copilot_usage_daily (ai_adoption_phase)",
+    notes: "Phase values: 0 = no cohort, 1 = code-first, 2 = agent-first, 3 = multi-agent. Sourced from the Copilot Usage Metrics API AI adoption cohorts field (2026-05-29).",
+  },
+  {
+    name: "Agent Adoption Rate (Cohorts)",
+    page: "AI Adoption Cohorts",
+    chart: "KPI Card",
+    description: "Percentage of engaged users currently in the agent-first or multi-agent phase.",
+    calculation: "ROUND(((agent_first_users + multi_agent_users) / engaged_users) × 100). Engaged users = users in phases 1–3.",
+    source: "fact_copilot_usage_daily (ai_adoption_phase)",
+  },
+  {
+    name: "Cohort Progression Over Time",
+    page: "AI Adoption Cohorts",
+    chart: "Stacked Area Chart",
+    description: "Daily count of distinct users in each AI adoption phase, showing how cohorts shift over time.",
+    calculation: "COUNT(DISTINCT user_id) grouped by day and ai_adoption_phase, pivoted into one series per phase.",
+    source: "fact_copilot_usage_daily (ai_adoption_phase)",
+  },
+  {
+    name: "Per-Cohort Productivity Metrics",
+    page: "AI Adoption Cohorts",
+    chart: "Bar Chart + Table",
+    description: "Average interactions, code generated/accepted, and lines of code added per engaged user in each adoption phase.",
+    calculation: "SUM(metric) / COUNT(DISTINCT user_id) grouped by ai_adoption_phase.",
+    source: "fact_copilot_usage_daily (ai_adoption_phase)",
+  },
+  {
+    name: "Top Users by Cohort",
+    page: "AI Adoption Cohorts",
+    chart: "Sortable Table",
+    description: "Most active users with their current AI adoption phase and activity totals for the period.",
+    calculation: "Per-user aggregates over the period, ordered by total interactions; current phase = latest-day ai_adoption_phase.",
+    source: "fact_copilot_usage_daily (ai_adoption_phase)",
+  },
 ];
 
 const PAGES = Array.from(new Set(METRICS.map((m) => m.page)));

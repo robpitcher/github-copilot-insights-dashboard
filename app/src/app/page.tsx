@@ -7,6 +7,7 @@ import {
   BookOpen,
   CreditCard,
   GitPullRequest,
+  Layers,
   Sparkles,
   Contact,
   Network,
@@ -49,6 +50,13 @@ export default function LandingPage() {
       href: "/agents",
       icon: AgentIcon,
       color: "text-purple-600 bg-purple-50 dark:bg-purple-900/30 dark:text-purple-400",
+    },
+    {
+      title: t("landing.aiAdoption"),
+      description: t("landing.aiAdoptionDesc"),
+      href: "/ai-adoption",
+      icon: Layers,
+      color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 dark:text-indigo-400",
     },
     {
       title: t("landing.cliImpact"),

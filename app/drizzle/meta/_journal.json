@@ -113,6 +113,13 @@
       "when": 1716756222000,
       "tag": "20260526202342_tearful_zarek",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "8",
+      "when": 1717344000000,
+      "tag": "20260602160000_ai_adoption_cohorts",
+      "breakpoints": true
     }
   ]
 }

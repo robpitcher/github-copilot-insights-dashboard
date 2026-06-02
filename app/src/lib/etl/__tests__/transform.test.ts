@@ -14,6 +14,7 @@ import {
   extractUniqueLanguages,
   extractUniqueModels,
   extractUniqueOrgIds,
+  extractAiAdoptionPhase,
 } from "../transform";
 
 const mockRecord: CopilotUsageRecord = {
@@ -152,6 +153,8 @@ describe("transformToFactUsage", () => {
       locSuggestedToDeleteSum: 100,
       locAddedSum: 300,
       locDeletedSum: 50,
+      aiAdoptionPhase: null,
+      aiAdoptionPhaseVersion: null,
     });
   });
 
@@ -378,5 +381,50 @@ describe("transformToFactCli", () => {
     };
     const rows = transformToFactCli(withCli);
     expect(rows[0].cliVersion).toBe("unknown");
+  });
+});
+
+describe("extractAiAdoptionPhase", () => {
+  it("parses the documented object form with version", () => {
+    expect(extractAiAdoptionPhase({ phase: 2, version: "v1" })).toEqual({ phase: 2, version: "v1" });
+  });
+
+  it("parses a bare numeric phase", () => {
+    expect(extractAiAdoptionPhase(3)).toEqual({ phase: 3, version: null });
+  });
+
+  it("parses numeric string and string tokens", () => {
+    expect(extractAiAdoptionPhase("1")).toEqual({ phase: 1, version: null });
+    expect(extractAiAdoptionPhase("code_first")).toEqual({ phase: 1, version: null });
+    expect(extractAiAdoptionPhase("AGENT_FIRST")).toEqual({ phase: 2, version: null });
+    expect(extractAiAdoptionPhase("multi_agent")).toEqual({ phase: 3, version: null });
+    expect(extractAiAdoptionPhase("no_cohort")).toEqual({ phase: 0, version: null });
+  });
+
+  it("parses 'phase N' style labels", () => {
+    expect(extractAiAdoptionPhase("Phase 2 — agent first")).toEqual({ phase: 2, version: null });
+  });
+
+  it("returns null for missing, unknown, or out-of-range values", () => {
+    expect(extractAiAdoptionPhase(undefined)).toEqual({ phase: null, version: null });
+    expect(extractAiAdoptionPhase(null)).toEqual({ phase: null, version: null });
+    expect(extractAiAdoptionPhase("nonsense")).toEqual({ phase: null, version: null });
+    expect(extractAiAdoptionPhase(7)).toEqual({ phase: null, version: null });
+  });
+
+  it("preserves version even when phase is out of range", () => {
+    expect(extractAiAdoptionPhase({ phase: 9, version: "v2" })).toEqual({ phase: null, version: "v2" });
+  });
+
+  it("is populated by transformToFactUsage", () => {
+    const row = transformToFactUsage({ ...mockRecord, ai_adoption_phase: { phase: 2, version: "v1" } });
+    expect(row.aiAdoptionPhase).toBe(2);
+    expect(row.aiAdoptionPhaseVersion).toBe("v1");
+  });
+
+  it("leaves fact row phase null when field absent", () => {
+    const row = transformToFactUsage(mockRecord);
+    expect(row.aiAdoptionPhase).toBeNull();
+    expect(row.aiAdoptionPhaseVersion).toBeNull();
   });
 });

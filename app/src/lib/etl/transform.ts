@@ -5,7 +5,66 @@
  */
 
 import { createHash } from "crypto";
-import type { CopilotUsageRecord, CopilotAggregateRecord } from "@/types/copilot-api";
+import type {
+  CopilotUsageRecord,
+  CopilotAggregateRecord,
+  AiAdoptionPhaseField,
+} from "@/types/copilot-api";
+
+// ── AI Adoption Phase Extraction ──
+
+/** Map known string phase tokens to their canonical numeric value. */
+const AI_PHASE_TOKEN_MAP: Record<string, number> = {
+  no_cohort: 0,
+  none: 0,
+  code_first: 1,
+  agent_first: 2,
+  multi_agent: 3,
+};
+
+/**
+ * Normalize the polymorphic `ai_adoption_phase` field into a numeric phase
+ * (0–3) and an optional version string. Tolerates the documented object form
+ * (`{ phase, version }`), a bare number, or a string token so the report keeps
+ * working if the API serialization shifts.
+ */
+export function extractAiAdoptionPhase(
+  field: AiAdoptionPhaseField | undefined
+): { phase: number | null; version: string | null } {
+  if (field === null || field === undefined) return { phase: null, version: null };
+
+  let rawPhase: number | string | undefined;
+  let version: string | null = null;
+
+  if (typeof field === "object") {
+    rawPhase = field.phase;
+    version = field.version ?? null;
+  } else {
+    rawPhase = field;
+  }
+
+  let phase: number | null = null;
+  if (typeof rawPhase === "number" && Number.isFinite(rawPhase)) {
+    phase = Math.trunc(rawPhase);
+  } else if (typeof rawPhase === "string") {
+    const trimmed = rawPhase.trim().toLowerCase();
+    if (/^-?\d+$/.test(trimmed)) {
+      phase = parseInt(trimmed, 10);
+    } else if (trimmed in AI_PHASE_TOKEN_MAP) {
+      phase = AI_PHASE_TOKEN_MAP[trimmed];
+    } else {
+      // Handle labels like "phase 2" or "phase 2 — agent first".
+      const m = trimmed.match(/phase\s*(\d)/);
+      if (m) phase = parseInt(m[1], 10);
+    }
+  }
+
+  // Clamp to the documented range; anything outside is treated as unknown.
+  if (phase === null || phase < 0 || phase > 3) {
+    return { phase: null, version };
+  }
+  return { phase, version };
+}
 
 // ── Dimension Extraction ──
 
@@ -90,6 +149,8 @@ export interface FactUsageDailyRow {
   locSuggestedToDeleteSum: number;
   locAddedSum: number;
   locDeletedSum: number;
+  aiAdoptionPhase: number | null;
+  aiAdoptionPhaseVersion: string | null;
 }
 
 export interface FactFeatureRow {
@@ -179,6 +240,7 @@ export interface FactCliRow {
 // ── Transform Functions ──
 
 export function transformToFactUsage(record: CopilotUsageRecord): FactUsageDailyRow {
+  const aiPhase = extractAiAdoptionPhase(record.ai_adoption_phase);
   return {
     day: record.day,
     enterpriseId: parseInt(String(record.enterprise_id), 10) || 0,
@@ -200,6 +262,8 @@ export function transformToFactUsage(record: CopilotUsageRecord): FactUsageDaily
     locSuggestedToDeleteSum: record.loc_suggested_to_delete_sum ?? 0,
     locAddedSum: record.loc_added_sum ?? 0,
     locDeletedSum: record.loc_deleted_sum ?? 0,
+    aiAdoptionPhase: aiPhase.phase,
+    aiAdoptionPhaseVersion: aiPhase.version,
   };
 }
 

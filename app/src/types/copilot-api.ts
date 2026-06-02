@@ -76,6 +76,15 @@ export interface CopilotUsageRecord {
   chat_panel_edit_mode?: number;
   chat_panel_unknown_mode?: number;
 
+  /**
+   * AI adoption phase classification for the user over the rolling 28-day
+   * window (Copilot Usage Metrics API, added 2026-05-29). The API nests the
+   * numeric phase under `phase` with a `version` string so the classification
+   * logic can evolve. Tolerant parsing also accepts a bare number or a string
+   * token (e.g. "code_first"). See `extractAiAdoptionPhase` in transform.ts.
+   */
+  ai_adoption_phase?: AiAdoptionPhaseField;
+
   // Breakdown arrays / objects
   totals_by_ide: TotalsByIde[];
   totals_by_feature: TotalsByFeature[];
@@ -94,6 +103,39 @@ export interface CopilotUsageRecord {
    */
   _teamGithubId?: number;
 }
+
+// ── AI Adoption Phase (cohorts, added 2026-05-29) ──
+
+/**
+ * The shape of the `ai_adoption_phase` field on user-level records. The API
+ * returns an object with a numeric `phase` (0–3) and a `version` string, but we
+ * also tolerate a bare number or string token for forward/backward safety.
+ */
+export type AiAdoptionPhaseField =
+  | number
+  | string
+  | { phase?: number | string; version?: string }
+  | null;
+
+/** Canonical numeric AI adoption phase values. */
+export const AI_ADOPTION_PHASES = [0, 1, 2, 3] as const;
+export type AiAdoptionPhase = (typeof AI_ADOPTION_PHASES)[number];
+
+/** Stable machine keys for each phase, used as i18n/label lookup keys. */
+export const AI_ADOPTION_PHASE_KEYS: Record<AiAdoptionPhase, string> = {
+  0: "noCohort",
+  1: "codeFirst",
+  2: "agentFirst",
+  3: "multiAgent",
+};
+
+/** Human-readable English labels for each phase (fallback / non-i18n contexts). */
+export const AI_ADOPTION_PHASE_LABELS: Record<AiAdoptionPhase, string> = {
+  0: "No cohort",
+  1: "Code-first",
+  2: "Agent-first",
+  3: "Multi-agent",
+};
 
 // ── Aggregate Record (enterprise-1-day / organization-1-day NDJSON) ──
 

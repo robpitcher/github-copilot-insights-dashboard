@@ -380,6 +380,8 @@ async function loadRecords(
         locSuggestedToDeleteSum: factRow.locSuggestedToDeleteSum,
         locAddedSum: factRow.locAddedSum,
         locDeletedSum: factRow.locDeletedSum,
+        aiAdoptionPhase: factRow.aiAdoptionPhase,
+        aiAdoptionPhaseVersion: factRow.aiAdoptionPhaseVersion,
       })
       .onConflictDoNothing();
 
