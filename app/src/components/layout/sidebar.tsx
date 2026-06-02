@@ -27,6 +27,9 @@ import {
 import { AgentIcon } from "@/components/icons/agent-icon";
 import { CliIcon } from "@/components/icons/cli-icon";
 
+// Reports are ordered from highest impact (top) to lowest. The deprecated
+// Premium Requests report sits at the bottom, followed by a separator and the
+// Metrics Reference.
 const NAV_KEYS = [
   { key: "nav.copilotUsage", href: "/metrics", icon: BarChart3 },
   { key: "nav.codeGeneration", href: "/code-generation", icon: Code },
@@ -35,11 +38,11 @@ const NAV_KEYS = [
   { key: "nav.aiAdoption", href: "/ai-adoption", icon: Layers },
   { key: "nav.cliImpact", href: "/cli", icon: CliIcon },
   { key: "nav.copilotLicensing", href: "/seats", icon: CreditCard },
-  { key: "nav.premiumRequests", href: "/premium-requests", icon: Sparkles },
   { key: "nav.aiCredits", href: "/ai-credits", icon: Coins },
   { key: "nav.usersData", href: "/users", icon: Contact },
   { key: "nav.enterpriseTeams", href: "/enterprise-teams", icon: Network },
-  { key: "nav.metricsReference", href: "/reference", icon: BookOpen },
+  { key: "nav.premiumRequests", href: "/premium-requests", icon: Sparkles },
+  { key: "nav.metricsReference", href: "/reference", icon: BookOpen, separatorBefore: true },
 ];
 
 const THEME_ICONS = { light: Sun, dark: Moon, system: Monitor } as const;
@@ -60,7 +63,7 @@ export function Sidebar() {
   return (
     <aside className="flex h-full w-60 flex-col border-e border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
       <Link href="/" className="flex h-14 items-center gap-2.5 border-b border-gray-200 px-4 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700">
-        <Image src="/favicon.ico" alt="" width={24} height={24} />
+        <Image src="/copilot-insights-icon.svg" alt="" width={24} height={24} />
         <span className="text-lg font-semibold text-gray-900 dark:text-gray-100">
           {t("common.copilotInsights")}
         </span>
@@ -74,6 +77,9 @@ export function Sidebar() {
             const Icon = item.icon;
             return (
               <li key={item.href}>
+                {"separatorBefore" in item && item.separatorBefore && (
+                  <hr className="my-2 border-gray-200 dark:border-gray-700" />
+                )}
                 <Link
                   href={item.href}
                   className={cn(

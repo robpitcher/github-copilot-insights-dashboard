@@ -10,7 +10,10 @@ export const metadata: Metadata = {
   description:
     "Enterprise analytics dashboard for GitHub Copilot usage and impact",
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/copilot-insights-icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico" },
+    ],
   },
 };
 
