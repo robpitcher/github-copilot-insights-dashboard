@@ -118,6 +118,8 @@ export const en = {
   dashboard: {
     title: "GitHub Copilot Usage",
     subtitle: "Usage metrics, adoption trends, and model analytics",
+    aboutTitle: "About this report",
+    aboutBody: "Enterprise-wide summary of Copilot usage — active users, adoption trends, engagement, and model analytics — aggregated from the GitHub Copilot Usage Metrics API for the selected period.",
     loadingMetrics: "Loading metrics…",
     activeUsers: "Active Users",
     agentAdoption: "Agent Adoption",
@@ -163,6 +165,8 @@ export const en = {
   agents: {
     title: "GitHub Copilot Agents",
     subtitle: "Copilot Agent usage, adoption, and productivity",
+    aboutTitle: "About this report",
+    aboutBody: "Tracks how your enterprise uses Copilot coding agents: adoption, session activity, and the productivity impact of agent-driven work over the selected period.",
     loadingAgent: "Loading agent data…",
     agentUsers: "Agent Users",
     adoptionRate: "Adoption Rate",
@@ -204,6 +208,8 @@ export const en = {
   aiAdoption: {
     title: "AI Adoption Cohorts",
     subtitle: "Segment users by AI adoption phase and track progression over time",
+    aboutTitle: "About this report",
+    aboutBody: "Segments users into AI adoption cohorts (code-first, agent-first, multi-agent) and tracks how they progress over time, so you can target enablement where it matters most.",
     loading: "Loading AI adoption data…",
     phase: {
       noCohort: "No cohort",
@@ -247,6 +253,8 @@ export const en = {
   codeGen: {
     title: "IDE Code Generation",
     subtitle: "Lines of code added and deleted from the codebase across all modes",
+    aboutTitle: "About this report",
+    aboutBody: "Shows how much code Copilot helps add and remove across IDE completions, chat, and agent modes, broken down by user, model, and language.",
     loadingCodeGen: "Loading code generation data…",
     linesChangedWithAI: "Lines of code changed with AI",
     agentContribution: "Agent Contribution",
@@ -270,6 +278,8 @@ export const en = {
   cli: {
     title: "GitHub Copilot CLI",
     subtitle: "Copilot CLI adoption, session activity, token consumption, and productivity",
+    aboutTitle: "About this report",
+    aboutBody: "Measures GitHub Copilot CLI adoption, session activity, token consumption, and the productivity of terminal-based AI assistance for the selected period.",
     loadingCli: "Loading CLI data…",
     cliUsers: "CLI Users",
     adoptionRate: "Adoption Rate",
@@ -319,6 +329,8 @@ export const en = {
   pullRequests: {
     title: "GitHub Copilot PR & Autofix",
     subtitle: "AI-assisted pull request creation, code review suggestions, autofix analytics, and merge metrics",
+    aboutTitle: "About this report",
+    aboutBody: "Covers AI-assisted pull request creation, code-review suggestions, autofix analytics, and merge metrics so you can gauge Copilot's impact on the PR workflow.",
     loadingPR: "Loading PR & autofix data…",
     prMetrics: "Pull Request Metrics",
     prsCreated: "PRs Created",
@@ -379,6 +391,8 @@ export const en = {
   seats: {
     title: "GitHub Copilot Licensing",
     subtitle: "License utilization, seat costs, and enablement opportunities — live from GitHub API",
+    aboutTitle: "About this report",
+    aboutBody: "Live view of Copilot license utilization, seat costs, and enablement opportunities, pulled directly from the GitHub billing API.",
     loadingSeats: "Loading licensing data…",
     totalSeats: "Total Seats",
     activeUsers: "Active Users",
@@ -438,6 +452,8 @@ export const en = {
   premiumRequests: {
     title: "GitHub Copilot Premium Requests (Deprecated)",
     subtitle: "Deprecated June 1, 2026 — historical premium request usage only. Premium requests have moved to AI Credits under usage-based billing. See the AI Credits report for current usage.",
+    aboutTitle: "About this report",
+    aboutBody: "Historical view of premium request usage. Premium requests were deprecated on June 1, 2026 and replaced by AI Credits under usage-based billing — see the AI Credits report for current usage.",
     loadingPremium: "Loading premium request data…",
     totalPremiumRequests: "Total Premium Requests",
     includedQuota: "Included PRUs",
@@ -490,7 +506,6 @@ export const en = {
     grossAmount: "Gross Amount",
     netAmount: "Additional Usage",
     discountCoverage: "Entitlement Coverage",
-    creditsPerSeat: "Credits / Seat",
     pricePerCredit: "Price / Credit",
     execSummary: "Executive Summary",
     execSummaryDesc: "Spend, entitlement coverage, and forecast for the selected period",
@@ -576,6 +591,8 @@ export const en = {
   models: {
     title: "GitHub Copilot Models",
     subtitle: "Available Copilot models and their enablement status",
+    aboutTitle: "About this report",
+    aboutBody: "Lists the Copilot models available to your enterprise, their enablement status, and recent usage so you can manage model access and policy.",
     usageData: "Usage data: {0}",
     totalModels: "Total Models",
     premiumModels: "Premium Models",
@@ -601,6 +618,8 @@ export const en = {
   users: {
     title: "GitHub Copilot User Explorer",
     subtitle: "All users with license status highlighting and advanced filters",
+    aboutTitle: "About this report",
+    aboutBody: "Explore every Copilot user with license status, activity, and advanced filters to surface inactive seats, power users, and onboarding gaps.",
     loadingUsers: "Loading user data…",
     totalUsers: "total users",
     licensed: "licensed",

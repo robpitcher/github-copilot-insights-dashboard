@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import "@/lib/chart-registry";
 import { Bar } from "react-chartjs-2";
 import { PageHeader } from "@/components/layout/page-header";
+import { ReportBanner } from "@/components/layout/report-banner";
 import { DataSourceBanner, formatDateRangeLabel } from "@/components/layout/report-filters";
 import { useChartOptions } from "@/lib/theme/chart-theme";
 import { useTranslation } from "@/lib/i18n/locale-provider";
@@ -175,6 +176,7 @@ export default function ModelsPage() {
         }
       />
       <DataSourceBanner />
+      <ReportBanner title={t("models.aboutTitle")} body={t("models.aboutBody")} />
 
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

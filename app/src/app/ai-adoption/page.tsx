@@ -11,6 +11,7 @@ import { useTranslation } from "@/lib/i18n/locale-provider";
 import { ReportFilters, DataSourceBanner, formatDateRangeLabel, type FilterState, type DataRange } from "@/components/layout/report-filters";
 import { ConfigurationBanner } from "@/components/layout/configuration-banner";
 import { PageHeader } from "@/components/layout/page-header";
+import { ReportBanner } from "@/components/layout/report-banner";
 import { EmptyState } from "@/components/ui/empty-state";
 
 /* ── Types ── */
@@ -189,6 +190,7 @@ export default function AiAdoptionPage() {
       />
       <ReportFilters onApply={fetchData} onDataRange={setDataRange} />
       <DataSourceBanner />
+      <ReportBanner title={t("aiAdoption.aboutTitle")} body={t("aiAdoption.aboutBody")} />
 
       {loading && !data ? (
         <LoadingSpinner message={t("aiAdoption.loading")} />

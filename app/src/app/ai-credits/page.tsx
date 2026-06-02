@@ -6,6 +6,7 @@ import { Bar, Doughnut, Line } from "react-chartjs-2";
 import { useChartOptions } from "@/lib/theme/chart-theme";
 import { useTranslation } from "@/lib/i18n/locale-provider";
 import { PageHeader } from "@/components/layout/page-header";
+import { ReportBanner } from "@/components/layout/report-banner";
 import { DataTable } from "@/components/ui/data-table";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { usePdfExport } from "@/components/ui/pdf-export";
@@ -32,7 +33,6 @@ interface AiCreditTotals {
   netAmount: number;
   discountCoveragePct: number;
   effectivePricePerCredit: number;
-  creditsPerSeat: number;
 }
 
 type ModelBreakdown = CreditBucket & { model: string };
@@ -212,6 +212,20 @@ export default function AiCreditsPage() {
       datasets: [{
         data: [includedCredits, billableCredits],
         backgroundColor: ["#22c55e", "#6366f1"],
+        borderWidth: 0,
+      }],
+    };
+  }, [data, t]);
+
+  const creditPoolDonut = useMemo(() => {
+    if (!data) return null;
+    const { consumedAmount, remainingAmount } = data.creditPool;
+    if (consumedAmount <= 0 && remainingAmount <= 0) return null;
+    return {
+      labels: [t("aiCredits.poolConsumed"), t("aiCredits.poolRemaining")],
+      datasets: [{
+        data: [consumedAmount, remainingAmount],
+        backgroundColor: ["#6366f1", "#22c55e"],
         borderWidth: 0,
       }],
     };
@@ -479,6 +493,7 @@ export default function AiCreditsPage() {
         actions={<PdfButton />}
       />
       <DataSourceBanner sourceLabel="GitHub AI Credit Billing API (/settings/billing/ai_credit/usage) + Copilot Usage/PR overlays" live />
+      <ReportBanner title={t("aiCredits.aboutTitle")} body={t("aiCredits.aboutBody")} />
 
       <div className="rounded-lg border border-indigo-100 bg-indigo-50 p-3 text-xs text-indigo-800 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-300">
         {t("aiCredits.ubbNotice")}
@@ -547,13 +562,12 @@ export default function AiCreditsPage() {
         </div>
       </Card>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <Kpi label={t("aiCredits.grossCredits")} value={fmtNum(totals.grossCredits)} />
         <Kpi label={t("aiCredits.includedCredits")} value={fmtNum(totals.includedCredits)} color="text-green-600" />
         <Kpi label={t("aiCredits.billableCredits")} value={fmtNum(totals.billableCredits)} color={totals.billableCredits > 0 ? "text-indigo-600" : "text-gray-900"} />
         <Kpi label={t("aiCredits.netAmount")} value={fmt$(totals.netAmount)} color={totals.netAmount > 0 ? "text-indigo-600" : "text-gray-900"} />
         <Kpi label={t("aiCredits.discountCoverage")} value={`${totals.discountCoveragePct}%`} color={totals.discountCoveragePct >= 80 ? "text-green-600" : totals.discountCoveragePct >= 50 ? "text-amber-600" : "text-indigo-600"} />
-        <Kpi label={t("aiCredits.creditsPerSeat")} value={fmtNum(totals.creditsPerSeat)} />
       </div>
 
       <Card title={t("aiCredits.usageInsights")} subtitle={t("aiCredits.usageInsightsDesc")}>
@@ -623,40 +637,69 @@ export default function AiCreditsPage() {
       </div>
 
       <Card title={t("aiCredits.creditPool")} subtitle={t("aiCredits.creditPoolDesc")}>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-md bg-gray-50 p-2 text-center dark:bg-gray-700/50">
-            <p className="text-xs text-gray-500 dark:text-gray-400">{t("aiCredits.poolTotal")}</p>
-            <p className="text-lg font-bold text-green-600 dark:text-green-400">{fmt$(data.creditPool.total)}</p>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2">
+              <div className="rounded-md bg-gray-50 p-2 text-center dark:bg-gray-700/50">
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t("aiCredits.poolTotal")}</p>
+                <p className="text-lg font-bold text-green-600 dark:text-green-400">{fmt$(data.creditPool.total)}</p>
+              </div>
+              <div className="rounded-md bg-gray-50 p-2 text-center dark:bg-gray-700/50">
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t("aiCredits.poolConsumed")}</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{fmt$(data.creditPool.consumedAmount)}</p>
+              </div>
+              <div className="rounded-md bg-gray-50 p-2 text-center dark:bg-gray-700/50">
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t("aiCredits.poolRemaining")}</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{fmt$(data.creditPool.remainingAmount)}</p>
+              </div>
+              <div className="rounded-md bg-gray-50 p-2 text-center dark:bg-gray-700/50">
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t("aiCredits.poolUtilization")}</p>
+                <p className={`text-lg font-bold ${data.creditPool.utilizationPct >= 90 ? "text-amber-600 dark:text-amber-400" : "text-indigo-600 dark:text-indigo-400"}`}>{data.creditPool.utilizationPct}%</p>
+              </div>
+            </div>
+            <div className="mt-3 space-y-1 border-t border-gray-100 pt-3 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
+              <p>
+                {t(
+                  "aiCredits.poolPerSeat",
+                  fmt$(data.creditPool.perSeat.business),
+                  String(data.creditPool.seats.business),
+                  fmt$(data.creditPool.perSeat.enterprise),
+                  String(data.creditPool.seats.enterprise)
+                )}
+              </p>
+              {data.creditPool.promotional && data.creditPool.promotionalPeriod && (
+                <p className="font-medium text-green-600 dark:text-green-400">
+                  {t("aiCredits.poolPromotional", data.creditPool.promotionalPeriod)}
+                </p>
+              )}
+              <p>{t("aiCredits.additionalUsage")}: <span className="font-medium text-gray-900 dark:text-gray-100">{fmt$(additionalUsage)}</span></p>
+            </div>
           </div>
-          <div className="rounded-md bg-gray-50 p-2 text-center dark:bg-gray-700/50">
-            <p className="text-xs text-gray-500 dark:text-gray-400">{t("aiCredits.poolConsumed")}</p>
-            <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{fmt$(data.creditPool.consumedAmount)}</p>
-          </div>
-          <div className="rounded-md bg-gray-50 p-2 text-center dark:bg-gray-700/50">
-            <p className="text-xs text-gray-500 dark:text-gray-400">{t("aiCredits.poolRemaining")}</p>
-            <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{fmt$(data.creditPool.remainingAmount)}</p>
-          </div>
-          <div className="rounded-md bg-gray-50 p-2 text-center dark:bg-gray-700/50">
-            <p className="text-xs text-gray-500 dark:text-gray-400">{t("aiCredits.poolUtilization")}</p>
-            <p className={`text-lg font-bold ${data.creditPool.utilizationPct >= 90 ? "text-amber-600 dark:text-amber-400" : "text-indigo-600 dark:text-indigo-400"}`}>{data.creditPool.utilizationPct}%</p>
-          </div>
-        </div>
-        <div className="mt-3 space-y-1 border-t border-gray-100 pt-3 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
-          <p>
-            {t(
-              "aiCredits.poolPerSeat",
-              fmt$(data.creditPool.perSeat.business),
-              String(data.creditPool.seats.business),
-              fmt$(data.creditPool.perSeat.enterprise),
-              String(data.creditPool.seats.enterprise)
+          <div className="flex items-center justify-center">
+            {creditPoolDonut ? (
+              <div className="flex items-center gap-4">
+                <div className="relative h-[180px] w-[180px] shrink-0">
+                  <Doughnut data={creditPoolDonut} options={{ ...doughnutOpts, cutout: "70%", maintainAspectRatio: false, plugins: { ...doughnutOpts.plugins, legend: { display: false } } }} />
+                  <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                    <span className={`text-2xl font-bold ${data.creditPool.utilizationPct >= 90 ? "text-amber-600 dark:text-amber-400" : "text-indigo-600 dark:text-indigo-400"}`}>{data.creditPool.utilizationPct}%</span>
+                    <span className="text-[10px] uppercase tracking-wider text-gray-400">{t("aiCredits.poolUtilization")}</span>
+                  </div>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block h-3 w-3 rounded-full bg-indigo-500" />
+                    <span className="text-gray-600 dark:text-gray-300">{t("aiCredits.poolConsumed")}: <span className="font-medium text-gray-900 dark:text-gray-100">{fmt$(data.creditPool.consumedAmount)}</span></span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block h-3 w-3 rounded-full bg-green-500" />
+                    <span className="text-gray-600 dark:text-gray-300">{t("aiCredits.poolRemaining")}: <span className="font-medium text-gray-900 dark:text-gray-100">{fmt$(data.creditPool.remainingAmount)}</span></span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="py-8 text-center text-sm text-gray-400">{t("aiCredits.noModelDriver")}</p>
             )}
-          </p>
-          {data.creditPool.promotional && data.creditPool.promotionalPeriod && (
-            <p className="font-medium text-green-600 dark:text-green-400">
-              {t("aiCredits.poolPromotional", data.creditPool.promotionalPeriod)}
-            </p>
-          )}
-          <p>{t("aiCredits.additionalUsage")}: <span className="font-medium text-gray-900 dark:text-gray-100">{fmt$(additionalUsage)}</span></p>
+          </div>
         </div>
       </Card>
 
@@ -865,13 +908,6 @@ export default function AiCreditsPage() {
           />
         </Card>
       )}
-
-      <div className="rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-300">
-        <p className="font-medium">{t("aiCredits.aboutTitle")}</p>
-        <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">
-          {t("aiCredits.aboutBody")}
-        </p>
-      </div>
     </div>
   );
 }

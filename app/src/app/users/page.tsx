@@ -6,6 +6,7 @@ import { usePdfExport } from "@/components/ui/pdf-export";
 import { useTranslation } from "@/lib/i18n/locale-provider";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { PageHeader } from "@/components/layout/page-header";
+import { ReportBanner } from "@/components/layout/report-banner";
 import { DataSourceBanner } from "@/components/layout/report-filters";
 import type { DataRange } from "@/components/layout/report-filters";
 import { ChevronDown, ChevronUp, Filter } from "lucide-react";
@@ -429,6 +430,7 @@ export default function UsersPage() {
         actions={<PdfButton />}
       />
       <DataSourceBanner sourceLabel="Synced usage data + live GitHub license API" />
+      <ReportBanner title={t("users.aboutTitle")} body={t("users.aboutBody")} />
 
       {loading ? (
         <LoadingSpinner message={t("users.loadingUsers")} />

@@ -89,6 +89,7 @@ import { useChartOptions } from "@/lib/theme/chart-theme";
 import { useTranslation } from "@/lib/i18n/locale-provider";
 import { ConfigurationBanner } from "@/components/layout/configuration-banner";
 import { PageHeader } from "@/components/layout/page-header";
+import { ReportBanner } from "@/components/layout/report-banner";
 import { EmptyState } from "@/components/ui/empty-state";
 
 /* ── Component ── */
@@ -422,6 +423,7 @@ export default function CopilotUsagePage() {
       />
       <ReportFilters onApply={fetchData} onDataRange={setDataRange} />
       <DataSourceBanner />
+      <ReportBanner title={t("dashboard.aboutTitle")} body={t("dashboard.aboutBody")} />
 
       {loading && !data ? (
         <LoadingSpinner message={t("dashboard.loadingMetrics")} />

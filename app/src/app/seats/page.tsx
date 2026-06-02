@@ -10,6 +10,7 @@ import { useChartOptions } from "@/lib/theme/chart-theme";
 import { useTranslation } from "@/lib/i18n/locale-provider";
 import { ConfigurationBanner } from "@/components/layout/configuration-banner";
 import { PageHeader } from "@/components/layout/page-header";
+import { ReportBanner } from "@/components/layout/report-banner";
 import { DataSourceBanner } from "@/components/layout/report-filters";
 import { AlertTriangle, Settings, Lightbulb, Sparkles, Users, BookOpen, ExternalLink } from "lucide-react";
 import { AgentIcon } from "@/components/icons/agent-icon";
@@ -282,6 +283,7 @@ export default function BusinessValuePage() {
         actions={<PdfButton />}
       />
       <DataSourceBanner sourceLabel="GitHub Copilot Billing / Seats API" live />
+      <ReportBanner title={t("seats.aboutTitle")} body={t("seats.aboutBody")} />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">

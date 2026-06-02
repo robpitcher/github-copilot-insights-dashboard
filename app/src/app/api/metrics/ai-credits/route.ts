@@ -434,7 +434,6 @@ export async function GET(request: NextRequest) {
     const billableCredits = totals.netQuantity;
     const discountCoveragePct = grossCredits > 0 ? Math.round((includedCredits / grossCredits) * 100) : 0;
     const effectivePricePerCredit = grossCredits > 0 ? round2(totals.grossAmount / grossCredits) : 0;
-    const creditsPerSeat = totalSeats > 0 ? Math.round((grossCredits / totalSeats) * 10) / 10 : 0;
 
     // Included AI Credit pool (entitlement) derived from seat mix + period rates.
     const poolBase = computeCreditPool(planCounts, year, month);
@@ -514,7 +513,6 @@ export async function GET(request: NextRequest) {
         netAmount: round2(totals.netAmount),
         discountCoveragePct,
         effectivePricePerCredit,
-        creditsPerSeat,
       },
       seats: {
         total: totalSeats,

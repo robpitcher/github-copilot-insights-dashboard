@@ -114,6 +114,8 @@ export const fr: TranslationKeys = {
     enterpriseTeams: "Équipes d'entreprise",
   },
   dashboard: {
+    aboutTitle: "À propos de ce rapport",
+    aboutBody: "Synthèse à l'échelle de l'entreprise de l'utilisation de Copilot — utilisateurs actifs, tendances d'adoption, engagement et analyses des modèles — agrégée depuis l'API GitHub Copilot Usage Metrics pour la période sélectionnée.",
     title: "Utilisation de GitHub Copilot",
     subtitle: "Métriques d'utilisation, tendances d'adoption et analyses de modèles",
     loadingMetrics: "Chargement des métriques…",
@@ -158,6 +160,8 @@ export const fr: TranslationKeys = {
     ofTotal: "sur {0} total",
   },
   agents: {
+    aboutTitle: "À propos de ce rapport",
+    aboutBody: "Suit l'utilisation des agents de codage Copilot dans votre entreprise : adoption, activité des sessions et impact sur la productivité du travail piloté par les agents sur la période sélectionnée.",
     title: "GitHub Copilot Agents",
     subtitle: "Utilisation, adoption et productivité des agents Copilot",
     loadingAgent: "Chargement des données agents…",
@@ -199,6 +203,8 @@ export const fr: TranslationKeys = {
   },
 
   aiAdoption: {
+    aboutTitle: "À propos de ce rapport",
+    aboutBody: "Segmente les utilisateurs en cohortes d'adoption de l'IA (code d'abord, agent d'abord, multi-agent) et suit leur progression dans le temps, afin de cibler l'accompagnement là où il compte le plus.",
     title: "Cohortes d'adoption de l'IA",
     subtitle: "Segmentez les utilisateurs par phase d'adoption de l'IA et suivez la progression dans le temps",
     loading: "Chargement des données d'adoption de l'IA…",
@@ -241,6 +247,8 @@ export const fr: TranslationKeys = {
     searchUsers: "Rechercher des utilisateurs...",
   },
   codeGen: {
+    aboutTitle: "À propos de ce rapport",
+    aboutBody: "Montre la quantité de code que Copilot aide à ajouter et à supprimer via les complétions de l'IDE, le chat et les modes agent, répartie par utilisateur, modèle et langage.",
     title: "Génération de code IDE",
     subtitle: "Lignes de code ajoutées et supprimées dans tous les modes",
     loadingCodeGen: "Chargement des données de génération…",
@@ -263,6 +271,8 @@ export const fr: TranslationKeys = {
     agentPerLanguageSubtitle: "Lignes ajoutées et supprimées par les agents, par langage",
   },
   cli: {
+    aboutTitle: "À propos de ce rapport",
+    aboutBody: "Mesure l'adoption de GitHub Copilot CLI, l'activité des sessions, la consommation de jetons et la productivité de l'assistance IA dans le terminal pour la période sélectionnée.",
     title: "GitHub Copilot CLI",
     subtitle: "Adoption de Copilot CLI, activité des sessions, consommation de jetons et productivité",
     loadingCli: "Chargement des données CLI…",
@@ -311,6 +321,8 @@ export const fr: TranslationKeys = {
     tokens: "Jetons",
   },
   pullRequests: {
+    aboutTitle: "À propos de ce rapport",
+    aboutBody: "Couvre la création de pull requests assistée par IA, les suggestions de revue de code, les analyses d'autofix et les métriques de fusion pour évaluer l'impact de Copilot sur le flux des PR.",
     title: "PR et Autofix GitHub Copilot",
     subtitle: "Création de pull requests assistée par IA, suggestions de revue de code, analytiques d'autofix et métriques de merge",
     loadingPR: "Chargement des données PR et autofix…",
@@ -370,6 +382,8 @@ export const fr: TranslationKeys = {
     applyRate: "Taux appli.",
   },
   seats: {
+    aboutTitle: "À propos de ce rapport",
+    aboutBody: "Vue en temps réel de l'utilisation des licences Copilot, des coûts par siège et des opportunités d'activation, directement issue de l'API de facturation GitHub.",
     title: "Licences GitHub Copilot",
     subtitle: "Utilisation des licences, coûts et opportunités d'économies — en direct depuis GitHub API",
     loadingSeats: "Chargement des données de licences…",
@@ -428,6 +442,8 @@ export const fr: TranslationKeys = {
     assignedVia: "Attribué via",
   },
   premiumRequests: {
+    aboutTitle: "À propos de ce rapport",
+    aboutBody: "Vue historique de l'utilisation des premium requests. Les premium requests ont été dépréciées le 1er juin 2026 et remplacées par les Crédits IA dans la facturation à l'usage — consultez le rapport Crédits IA pour l'utilisation actuelle.",
     title: "Requêtes Premium GitHub Copilot (Obsolète)",
     subtitle: "Obsolète depuis le 1er juin 2026 — utilisation historique des requêtes premium uniquement. Les requêtes premium sont passées aux Crédits IA avec la facturation à l'usage. Consultez le rapport Crédits IA pour l'utilisation actuelle.",
     loadingPremium: "Chargement des données premium…",
@@ -481,7 +497,6 @@ export const fr: TranslationKeys = {
     grossAmount: "Montant brut",
     netAmount: "Usage supplémentaire",
     discountCoverage: "Couverture des droits",
-    creditsPerSeat: "Crédits / Licence",
     pricePerCredit: "Prix / Crédit",
     execSummary: "Résumé exécutif",
     execSummaryDesc: "Dépenses, couverture des droits et prévision pour la période sélectionnée",
@@ -564,6 +579,8 @@ export const fr: TranslationKeys = {
     aboutBody: "Avec la facturation à l'usage (en vigueur le 1er juin 2026), l'utilisation des modèles premium de Copilot est mesurée en Crédits IA. Chaque modèle consomme des crédits à un prix par crédit ; les droits inclus couvrent une partie de l'utilisation brute et le reste (net) est facturable. Les données proviennent de l'API d'utilisation de facturation des Crédits IA de GitHub et sont enrichies par les métriques du tableau de bord.",
   },
   models: {
+    aboutTitle: "À propos de ce rapport",
+    aboutBody: "Répertorie les modèles Copilot disponibles pour votre entreprise, leur statut d'activation et leur utilisation récente, pour gérer l'accès aux modèles et la politique associée.",
     title: "Modèles GitHub Copilot",
     subtitle: "Modèles disponibles et leur état d'activation",
     usageData: "Données d'utilisation : {0}",
@@ -588,6 +605,8 @@ export const fr: TranslationKeys = {
     features: "Fonctions",
   },
   users: {
+    aboutTitle: "À propos de ce rapport",
+    aboutBody: "Explorez chaque utilisateur Copilot avec son statut de licence, son activité et des filtres avancés pour repérer les sièges inactifs, les utilisateurs intensifs et les lacunes d'intégration.",
     title: "Explorateur d'utilisateurs GitHub Copilot",
     subtitle: "Tous les utilisateurs avec statut de licence et filtres avancés",
     loadingUsers: "Chargement des données utilisateurs…",

@@ -9,6 +9,7 @@ import { usePdfExport } from "@/components/ui/pdf-export";
 import { ReportFilters, DataSourceBanner } from "@/components/layout/report-filters";
 import type { FilterState, DataRange } from "@/components/layout/report-filters";
 import { PageHeader } from "@/components/layout/page-header";
+import { ReportBanner } from "@/components/layout/report-banner";
 import { useTranslation } from "@/lib/i18n/locale-provider";
 import { useChartOptions } from "@/lib/theme/chart-theme";
 import { ConfigurationBanner } from "@/components/layout/configuration-banner";
@@ -232,6 +233,7 @@ export default function PullRequestsPage() {
       />
       <ReportFilters onApply={fetchData} onDataRange={setDataRange} showUserFilter={false} teamFilterEnabled={false} sourceLabel="Organization Aggregate" />
       <DataSourceBanner sourceLabel="Organization aggregate data (includes pull request metrics)" />
+      <ReportBanner title={t("pullRequests.aboutTitle")} body={t("pullRequests.aboutBody")} />
 
       {loading ? (
         <LoadingSpinner message={t("pullRequests.loadingPR")} />

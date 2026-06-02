@@ -6,6 +6,7 @@ import { Bar, Doughnut, Line } from "react-chartjs-2";
 import { useChartOptions } from "@/lib/theme/chart-theme";
 import { useTranslation } from "@/lib/i18n/locale-provider";
 import { PageHeader } from "@/components/layout/page-header";
+import { ReportBanner } from "@/components/layout/report-banner";
 import { DataTable } from "@/components/ui/data-table";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { usePdfExport } from "@/components/ui/pdf-export";
@@ -450,6 +451,7 @@ export default function PremiumRequestsPage() {
         actions={<PdfButton />}
       />
       <DataSourceBanner sourceLabel="GitHub Premium Request Billing API + Copilot Usage/PR overlays" live />
+      <ReportBanner title={t("premiumRequests.aboutTitle")} body={t("premiumRequests.aboutBody")} />
 
       <div className="flex flex-wrap items-center gap-3">
         <button
@@ -754,14 +756,10 @@ export default function PremiumRequestsPage() {
         </Card>
       )}
 
-      <div className="rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-300">
-        <p className="font-medium">About premium request billing</p>
-        <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">
-          Each Copilot Business seat includes 300 PRUs/month and each Enterprise seat includes 1,000.
-          Usage beyond the included PRUs is billed at $0.04 per request.
-          Data is sourced from GitHub billing usage APIs and enriched with dashboard overlay metrics.
-        </p>
-      </div>
+      <ReportBanner
+        title="About premium request billing"
+        body="Each Copilot Business seat includes 300 PRUs/month and each Enterprise seat includes 1,000. Usage beyond the included PRUs is billed at $0.04 per request. Data is sourced from GitHub billing usage APIs and enriched with dashboard overlay metrics."
+      />
     </div>
   );
 }

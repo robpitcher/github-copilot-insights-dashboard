@@ -963,14 +963,6 @@ const METRICS: MetricDef[] = [
     source: "Derived from gross vs discount quantities",
   },
   {
-    name: "Credits per Seat",
-    page: "AI Credits",
-    chart: "KPI Card",
-    description: "Average AI Credits consumed per licensed Copilot seat.",
-    calculation: "gross_quantity / active_seat_count.",
-    source: "Derived from usage + seat counts",
-  },
-  {
     name: "Effective Price per Credit",
     page: "AI Credits",
     chart: "KPI Card",
