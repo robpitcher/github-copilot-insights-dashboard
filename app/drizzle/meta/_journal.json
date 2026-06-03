@@ -134,6 +134,13 @@
       "when": 1717405200000,
       "tag": "20260603090000_raw_report_window",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "8",
+      "when": 1717416000000,
+      "tag": "20260603120000_reconcile_schema_drift",
+      "breakpoints": true
     }
   ]
 }
