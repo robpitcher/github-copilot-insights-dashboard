@@ -1,1 +1,1 @@
-20260411113817_kind_queen_noir/migration.sql
+ALTER TABLE "fact_copilot_usage_daily" ADD COLUMN IF NOT EXISTS "used_copilot_coding_agent" boolean DEFAULT false NOT NULL;

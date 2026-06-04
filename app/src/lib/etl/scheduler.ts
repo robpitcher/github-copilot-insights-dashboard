@@ -68,6 +68,14 @@ async function runIngestion() {
     } catch (teamsErr) {
       console.error("Scheduled enterprise teams sync failed:", teamsErr);
     }
+
+    // Enforce audit-log retention so the table doesn't grow unbounded.
+    try {
+      const { pruneAuditLog } = await import("@/lib/audit");
+      await pruneAuditLog();
+    } catch (pruneErr) {
+      console.error("Scheduled audit-log prune failed:", pruneErr);
+    }
   } catch (err) {
     console.error("Scheduled ETL ingestion failed:", err);
   }

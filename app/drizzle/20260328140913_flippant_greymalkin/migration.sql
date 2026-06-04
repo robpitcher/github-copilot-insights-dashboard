@@ -1,1 +1,0 @@
-ALTER TABLE "dim_model" DROP COLUMN "display_name";

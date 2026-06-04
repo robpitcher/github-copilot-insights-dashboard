@@ -1,4 +1,4 @@
-CREATE TABLE "fact_ai_credit_usage" (
+CREATE TABLE IF NOT EXISTS "fact_ai_credit_usage" (
 	"id" bigserial PRIMARY KEY NOT NULL,
 	"enterprise_slug" varchar(255) NOT NULL,
 	"period_year" smallint NOT NULL,
@@ -22,5 +22,5 @@ CREATE TABLE "fact_ai_credit_usage" (
 	"ingested_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE INDEX "idx_fact_ai_credit_period" ON "fact_ai_credit_usage" ("enterprise_slug","period_year","period_month");--> statement-breakpoint
-CREATE INDEX "idx_fact_ai_credit_model" ON "fact_ai_credit_usage" ("model");
+CREATE INDEX IF NOT EXISTS "idx_fact_ai_credit_period" ON "fact_ai_credit_usage" ("enterprise_slug","period_year","period_month");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_fact_ai_credit_model" ON "fact_ai_credit_usage" ("model");

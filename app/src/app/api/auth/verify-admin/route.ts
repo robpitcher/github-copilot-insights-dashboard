@@ -4,6 +4,9 @@ import { logAudit, getClientIp } from "@/lib/audit";
 import {
   safeCompare,
   checkRateLimit,
+  getLockoutRemainingMs,
+  recordFailedAttempt,
+  clearFailedAttempts,
   createSessionToken,
   sessionCookieOptions,
   COOKIE_NAMES,
@@ -23,8 +26,19 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const ip = getClientIp(request) ?? "unknown";
+    const lockKey = `admin-auth:${ip}`;
 
-    if (!checkRateLimit(`admin-auth:${ip}`)) {
+    // Hard lockout after repeated failures takes precedence over the burst limit.
+    const lockoutMs = getLockoutRemainingMs(lockKey);
+    if (lockoutMs > 0) {
+      logAudit({ action: "admin_login_locked_out", category: "auth", ipAddress: ip });
+      return NextResponse.json(
+        { error: "Too many failed attempts. Account temporarily locked." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(lockoutMs / 1000)) } },
+      );
+    }
+
+    if (!checkRateLimit(lockKey)) {
       logAudit({ action: "admin_login_rate_limited", category: "auth", ipAddress: ip });
       return NextResponse.json(
         { error: "Too many attempts. Please try again later." },
@@ -43,10 +57,16 @@ export async function POST(request: NextRequest) {
     }
 
     if (!safeCompare(password, adminPassword)) {
-      logAudit({ action: "admin_login_failed", category: "auth", ipAddress: ip });
+      const lockedNow = recordFailedAttempt(lockKey);
+      logAudit({
+        action: lockedNow ? "admin_login_locked_out" : "admin_login_failed",
+        category: "auth",
+        ipAddress: ip,
+      });
       return NextResponse.json({ error: "Invalid password" }, { status: 401 });
     }
 
+    clearFailedAttempts(lockKey);
     logAudit({ action: "admin_login_success", category: "auth", ipAddress: ip });
 
     const token = createSessionToken("admin");

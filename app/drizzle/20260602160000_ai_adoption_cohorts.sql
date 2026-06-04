@@ -1,6 +1,6 @@
-ALTER TABLE "fact_copilot_usage_daily" ADD COLUMN "ai_adoption_phase" smallint;--> statement-breakpoint
-ALTER TABLE "fact_copilot_usage_daily" ADD COLUMN "ai_adoption_phase_version" varchar(10);--> statement-breakpoint
-CREATE INDEX "idx_fact_usage_ai_phase" ON "fact_copilot_usage_daily" ("day","ai_adoption_phase");
+ALTER TABLE "fact_copilot_usage_daily" ADD COLUMN IF NOT EXISTS "ai_adoption_phase" smallint;--> statement-breakpoint
+ALTER TABLE "fact_copilot_usage_daily" ADD COLUMN IF NOT EXISTS "ai_adoption_phase_version" varchar(10);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_fact_usage_ai_phase" ON "fact_copilot_usage_daily" ("day","ai_adoption_phase");
 --> statement-breakpoint
 UPDATE "fact_copilot_usage_daily" f
 SET

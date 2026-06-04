@@ -1,1 +1,1 @@
-20260328050630_young_kylun/migration.sql
+ALTER TABLE "ingestion_log" ADD COLUMN IF NOT EXISTS "log_messages" text;

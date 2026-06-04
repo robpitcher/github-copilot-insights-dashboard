@@ -1,1 +1,1 @@
-20260327113214_yielding_epoch/migration.sql
+ALTER TABLE "ingestion_log" ADD COLUMN IF NOT EXISTS "source" varchar(20) DEFAULT 'api' NOT NULL;

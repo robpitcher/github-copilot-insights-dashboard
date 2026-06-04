@@ -1,1 +1,0 @@
-DROP TABLE "fact_cli_daily" CASCADE;

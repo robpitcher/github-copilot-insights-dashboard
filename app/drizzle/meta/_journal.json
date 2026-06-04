@@ -1,146 +1,146 @@
 {
-  "version": "8",
-  "dialect": "postgresql",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "8",
-      "when": 1711320069000,
-      "tag": "20260324232109_strong_cloak",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "8",
-      "when": 1711406903000,
-      "tag": "20260325230823_smart_talisman",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "8",
-      "when": 1711460063000,
-      "tag": "20260326133423_greedy_young_avengers",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "8",
-      "when": 1711541534000,
-      "tag": "20260327113214_yielding_epoch",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "8",
-      "when": 1711590539000,
-      "tag": "20260328014859_naive_captain_stacy",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "8",
-      "when": 1711598815000,
-      "tag": "20260328040655_swift_marten_broadcloak",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "8",
-      "when": 1711600574000,
-      "tag": "20260328043614_misty_roland_deschain",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "8",
-      "when": 1711602390000,
-      "tag": "20260328050630_young_kylun",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "8",
-      "when": 1711634953000,
-      "tag": "20260328140913_flippant_greymalkin",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "8",
-      "when": 1712753701000,
-      "tag": "20260410131501_rich_rafael_vega",
-      "breakpoints": true
-    },
-    {
-      "idx": 10,
-      "version": "8",
-      "when": 1712757639000,
-      "tag": "20260410142039_simple_cammi",
-      "breakpoints": true
-    },
-    {
-      "idx": 11,
-      "version": "8",
-      "when": 1712779363000,
-      "tag": "20260410200243_omniscient_ma_gnuci",
-      "breakpoints": true
-    },
-    {
-      "idx": 12,
-      "version": "8",
-      "when": 1712835497000,
-      "tag": "20260411113817_kind_queen_noir",
-      "breakpoints": true
-    },
-    {
-      "idx": 13,
-      "version": "8",
-      "when": 1713270402000,
-      "tag": "20260416122642_cute_kitty_pryde",
-      "breakpoints": true
-    },
-    {
-      "idx": 14,
-      "version": "8",
-      "when": 1713368505000,
-      "tag": "20260417150145_next_the_renegades",
-      "breakpoints": true
-    },
-    {
-      "idx": 15,
-      "version": "8",
-      "when": 1716756222000,
-      "tag": "20260526202342_tearful_zarek",
-      "breakpoints": true
-    },
-    {
-      "idx": 16,
-      "version": "8",
-      "when": 1717344000000,
-      "tag": "20260602160000_ai_adoption_cohorts",
-      "breakpoints": true
-    },
-    {
-      "idx": 17,
-      "version": "8",
-      "when": 1717347600000,
-      "tag": "20260602170000_ai_credit_usage",
-      "breakpoints": true
-    },
-    {
-      "idx": 18,
-      "version": "8",
-      "when": 1717405200000,
-      "tag": "20260603090000_raw_report_window",
-      "breakpoints": true
-    },
-    {
-      "idx": 19,
-      "version": "8",
-      "when": 1717416000000,
-      "tag": "20260603120000_reconcile_schema_drift",
-      "breakpoints": true
-    }
-  ]
+	"version": "8",
+	"dialect": "postgresql",
+	"entries": [
+		{
+			"idx": 0,
+			"version": "8",
+			"when": 1711320069000,
+			"tag": "20260324232109_strong_cloak",
+			"breakpoints": true
+		},
+		{
+			"idx": 1,
+			"version": "8",
+			"when": 1711406903000,
+			"tag": "20260325230823_smart_talisman",
+			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "8",
+			"when": 1711460063000,
+			"tag": "20260326133423_greedy_young_avengers",
+			"breakpoints": true
+		},
+		{
+			"idx": 3,
+			"version": "8",
+			"when": 1711541534000,
+			"tag": "20260327113214_yielding_epoch",
+			"breakpoints": true
+		},
+		{
+			"idx": 4,
+			"version": "8",
+			"when": 1711590539000,
+			"tag": "20260328014859_naive_captain_stacy",
+			"breakpoints": true
+		},
+		{
+			"idx": 5,
+			"version": "8",
+			"when": 1711598815000,
+			"tag": "20260328040655_swift_marten_broadcloak",
+			"breakpoints": true
+		},
+		{
+			"idx": 6,
+			"version": "8",
+			"when": 1711600574000,
+			"tag": "20260328043614_misty_roland_deschain",
+			"breakpoints": true
+		},
+		{
+			"idx": 7,
+			"version": "8",
+			"when": 1711602390000,
+			"tag": "20260328050630_young_kylun",
+			"breakpoints": true
+		},
+		{
+			"idx": 8,
+			"version": "8",
+			"when": 1711634953000,
+			"tag": "20260328140913_flippant_greymalkin",
+			"breakpoints": true
+		},
+		{
+			"idx": 9,
+			"version": "8",
+			"when": 1712753701000,
+			"tag": "20260410131501_rich_rafael_vega",
+			"breakpoints": true
+		},
+		{
+			"idx": 10,
+			"version": "8",
+			"when": 1712757639000,
+			"tag": "20260410142039_simple_cammi",
+			"breakpoints": true
+		},
+		{
+			"idx": 11,
+			"version": "8",
+			"when": 1712779363000,
+			"tag": "20260410200243_omniscient_ma_gnuci",
+			"breakpoints": true
+		},
+		{
+			"idx": 12,
+			"version": "8",
+			"when": 1712835497000,
+			"tag": "20260411113817_kind_queen_noir",
+			"breakpoints": true
+		},
+		{
+			"idx": 13,
+			"version": "8",
+			"when": 1713270402000,
+			"tag": "20260416122642_cute_kitty_pryde",
+			"breakpoints": true
+		},
+		{
+			"idx": 14,
+			"version": "8",
+			"when": 1713368505000,
+			"tag": "20260417150145_next_the_renegades",
+			"breakpoints": true
+		},
+		{
+			"idx": 15,
+			"version": "8",
+			"when": 1716756222000,
+			"tag": "20260526202342_tearful_zarek",
+			"breakpoints": true
+		},
+		{
+			"idx": 16,
+			"version": "8",
+			"when": 1717344000000,
+			"tag": "20260602160000_ai_adoption_cohorts",
+			"breakpoints": true
+		},
+		{
+			"idx": 17,
+			"version": "8",
+			"when": 1717347600000,
+			"tag": "20260602170000_ai_credit_usage",
+			"breakpoints": true
+		},
+		{
+			"idx": 18,
+			"version": "8",
+			"when": 1717405200000,
+			"tag": "20260603090000_raw_report_window",
+			"breakpoints": true
+		},
+		{
+			"idx": 19,
+			"version": "7",
+			"when": 1717416000000,
+			"tag": "20260603120000_reconcile_schema_drift",
+			"breakpoints": true
+		}
+	]
 }

@@ -1,1 +1,1 @@
-20260328140913_flippant_greymalkin/migration.sql
+ALTER TABLE "dim_model" DROP COLUMN "display_name";

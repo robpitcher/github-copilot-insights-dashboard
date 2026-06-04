@@ -1,1 +1,0 @@
-ALTER TABLE "ingestion_log" ADD COLUMN "log_messages" text;

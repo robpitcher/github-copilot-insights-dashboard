@@ -34,6 +34,66 @@ export function checkRateLimit(key: string): boolean {
   return entry.count <= RATE_LIMIT_MAX;
 }
 
+/* ── Failed-attempt Lockout ── */
+
+interface LockoutEntry {
+  failures: number;
+  /** Epoch ms until which the key is locked out (0 = not locked). */
+  lockedUntil: number;
+  /** When the current failure window resets. */
+  windowResetAt: number;
+}
+
+const lockoutStore = new Map<string, LockoutEntry>();
+
+const LOCKOUT_THRESHOLD = 5; // consecutive failures before lockout
+const LOCKOUT_WINDOW_MS = 15 * 60_000; // window over which failures accumulate
+const LOCKOUT_DURATION_MS = 15 * 60_000; // how long the lockout lasts
+
+/**
+ * Returns the number of milliseconds remaining on an active lockout for `key`,
+ * or 0 if the key is not currently locked out. Use before verifying a password.
+ */
+export function getLockoutRemainingMs(key: string): number {
+  const entry = lockoutStore.get(key);
+  if (!entry) return 0;
+  const now = Date.now();
+  if (entry.lockedUntil > now) return entry.lockedUntil - now;
+  return 0;
+}
+
+/**
+ * Record a failed authentication attempt for `key`. Once failures reach the
+ * threshold within the window, the key is locked out for a fixed duration.
+ * Returns true if this attempt triggered (or is within) a lockout.
+ */
+export function recordFailedAttempt(key: string): boolean {
+  const now = Date.now();
+  const entry = lockoutStore.get(key);
+
+  if (!entry || now > entry.windowResetAt) {
+    lockoutStore.set(key, {
+      failures: 1,
+      lockedUntil: 0,
+      windowResetAt: now + LOCKOUT_WINDOW_MS,
+    });
+    return false;
+  }
+
+  entry.failures++;
+  if (entry.failures >= LOCKOUT_THRESHOLD) {
+    entry.lockedUntil = now + LOCKOUT_DURATION_MS;
+    entry.windowResetAt = now + LOCKOUT_DURATION_MS;
+    return true;
+  }
+  return false;
+}
+
+/** Clear any recorded failures/lockout for `key` after a successful auth. */
+export function clearFailedAttempts(key: string): void {
+  lockoutStore.delete(key);
+}
+
 /* ── Timing-safe Password Comparison ── */
 
 /** Constant-time string comparison to prevent timing attacks. */

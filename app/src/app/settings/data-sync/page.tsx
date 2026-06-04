@@ -518,7 +518,11 @@ export default function DataSyncPage() {
     setShowResetConfirm(false);
     setResetting(true);
     try {
-      const res = await fetch("/api/admin/reset", { method: "POST" });
+      const res = await fetch("/api/admin/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: "RESET" }),
+      });
       if (res.ok) {
         const result = await res.json();
         showMessage("success", result.message ?? "Database reset successfully");

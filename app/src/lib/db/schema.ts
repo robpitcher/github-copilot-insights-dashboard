@@ -414,7 +414,7 @@ export const ingestionLog = pgTable("ingestion_log", {
 });
 
 export const savedViews = pgTable("saved_views", {
-  id: uuid("id").defaultRandom().primaryKey(),
+  id: bigserial("id", { mode: "number" }).primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   filtersJson: jsonb("filters_json").notNull(),
@@ -432,7 +432,7 @@ export const appSettings = pgTable("app_settings", {
 });
 
 export const alertRules = pgTable("alert_rules", {
-  id: uuid("id").defaultRandom().primaryKey(),
+  id: bigserial("id", { mode: "number" }).primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   metricName: varchar("metric_name", { length: 255 }).notNull(),
   condition: varchar("condition", { length: 20 }).notNull(),

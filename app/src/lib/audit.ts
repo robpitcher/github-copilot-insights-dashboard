@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { auditLog } from "@/lib/db/schema";
+import { lt } from "drizzle-orm";
 
 export type AuditCategory =
   | "auth"
@@ -43,4 +44,38 @@ export function getClientIp(request: Request): string | undefined {
     return forwarded.split(",")[0].trim();
   }
   return request.headers.get("x-real-ip") ?? undefined;
+}
+
+/** Default audit-log retention window (days). Overridable via AUDIT_RETENTION_DAYS. */
+export const DEFAULT_AUDIT_RETENTION_DAYS = 365;
+
+/** Resolve the configured retention window, falling back to the default. */
+export function getAuditRetentionDays(): number {
+  const raw = process.env.AUDIT_RETENTION_DAYS;
+  if (!raw) return DEFAULT_AUDIT_RETENTION_DAYS;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : DEFAULT_AUDIT_RETENTION_DAYS;
+}
+
+/**
+ * Delete audit-log entries older than the retention window so the table doesn't
+ * grow unbounded. Returns the number of rows removed. Errors are swallowed and
+ * logged — pruning must never break the caller.
+ */
+export async function pruneAuditLog(retentionDays = getAuditRetentionDays()): Promise<number> {
+  try {
+    const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
+    const result = await db
+      .delete(auditLog)
+      .where(lt(auditLog.createdAt, cutoff))
+      .returning({ id: auditLog.id });
+    const removed = result.length;
+    if (removed > 0) {
+      console.info(`Audit log pruned: removed ${removed} entries older than ${retentionDays} days`);
+    }
+    return removed;
+  } catch (err) {
+    console.error("Failed to prune audit log:", err);
+    return 0;
+  }
 }
