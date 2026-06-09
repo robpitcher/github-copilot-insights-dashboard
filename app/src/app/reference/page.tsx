@@ -1061,6 +1061,32 @@ const METRICS: MetricDef[] = [
     source: "GitHub API: /enterprises/{slug}/settings/billing/ai_credit/usage (live)",
   },
 
+  // ── Models Page ──
+  {
+    name: "Total Models",
+    page: "Models",
+    chart: "KPI Card",
+    description: "Count of models currently registered in the model catalog.",
+    calculation: "COUNT(*) FROM dim_model.",
+    source: "dim_model",
+  },
+  {
+    name: "Premium vs Included Models",
+    page: "Models",
+    chart: "Doughnut Chart",
+    description: "Share of models marked premium versus included in the current model catalog.",
+    calculation: "COUNT(*) GROUP BY is_premium from dim_model.",
+    source: "dim_model",
+  },
+  {
+    name: "Model Usage by Feature",
+    page: "Models",
+    chart: "Bar Chart",
+    description: "Request volume by model and feature for the selected date range.",
+    calculation: "SUM(user_initiated_interaction_count + code_generation_activity_count) grouped by model_id and feature_id from fact_user_model_daily.",
+    source: "fact_user_model_daily → dim_model + dim_feature",
+  },
+
   // ── Users Page ──
   {
     name: "Users Directory",
@@ -1246,18 +1272,18 @@ const DATA_MODEL = [
   // ── Fact Tables ──
   {
     table: "fact_copilot_usage_daily",
-    description: "Core fact table. One row per user per day. Aggregated from the GitHub Copilot Usage Metrics API (v2026-03-10).",
+    description: "Core per-user daily fact table. Aggregated from the GitHub Copilot Usage Metrics API (v2026-03-10) and used by the main dashboard and adoption reports.",
     columns: [
-      "user_id, user_login, day",
-      "user_initiated_interaction_count — total chat/agent requests",
-      "code_generation_activity_count — inline code suggestions shown",
-      "code_acceptance_activity_count — inline suggestions accepted",
+      "id — internal surrogate key",
+      "day, enterprise_id, user_id, user_login, source_team_github_id, org_id",
+      "user_initiated_interaction_count — chat/agent requests",
+      "code_generation_activity_count — suggestions shown",
+      "code_acceptance_activity_count — suggestions accepted",
       "loc_suggested_to_add_sum, loc_suggested_to_delete_sum — LOC suggested",
       "loc_added_sum, loc_deleted_sum — LOC accepted",
-      "used_agent, used_copilot_coding_agent, used_copilot_cloud_agent — agent mode flags",
-      "used_chat, used_cli — chat and CLI usage flags",
-      "used_code_review_active — user-initiated Copilot code review",
-      "used_code_review_passive — automatic/passive Copilot code review",
+      "used_agent, used_copilot_coding_agent, used_copilot_cloud_agent — agent-mode flags",
+      "used_chat, used_cli, used_code_review_active, used_code_review_passive — feature and review flags",
+      "ai_adoption_phase, ai_adoption_phase_version — cohort metadata",
     ],
   },
   {
@@ -1273,11 +1299,11 @@ const DATA_MODEL = [
   },
   {
     table: "fact_user_model_daily",
-    description: "One row per user per model per feature per day. Tracks which AI models users interact with.",
+    description: "One row per user per model per feature per day. Tracks which AI models users interact with and how much request/code-generation activity they produce.",
     columns: [
-      "user_id, model_id (FK → dim_model), feature_id (FK → dim_feature), day",
-      "user_initiated_interaction_count",
-      "code_generation_activity_count, code_acceptance_activity_count",
+      "id — internal surrogate key",
+      "day, user_id, model_id (FK → dim_model), feature_id (FK → dim_feature), source_team_github_id",
+      "user_initiated_interaction_count, code_generation_activity_count, code_acceptance_activity_count",
     ],
   },
   {
@@ -1293,10 +1319,11 @@ const DATA_MODEL = [
   },
   {
     table: "fact_user_language_daily",
-    description: "One row per user per language per day. Tracks programming language usage in code generation.",
+    description: "One row per user per language per feature per day. Tracks programming language usage in code generation and feature attribution.",
     columns: [
-      "user_id, language_id (FK → dim_language), day",
-      "code_generation_activity_count, code_acceptance_activity_count",
+      "id — internal surrogate key",
+      "day, user_id, language_id (FK → dim_language), feature_id (FK → dim_feature), source_team_github_id",
+      "user_initiated_interaction_count, code_generation_activity_count, code_acceptance_activity_count",
     ],
   },
   {
@@ -1334,9 +1361,10 @@ const DATA_MODEL = [
   },
   {
     table: "fact_org_aggregate_daily",
-    description: "One row per org per day. Stores organization-level aggregate metrics including pull request data from the copilot_metrics_api org endpoint.",
+    description: "One row per org per day. Stores organization-level aggregate metrics including PR creation, merge, review, and Copilot autofix KPIs.",
     columns: [
-      "org_id (FK → dim_org), day, scope",
+      "id — internal surrogate key",
+      "day, org_id (FK → dim_org), scope",
       "daily_active_users, weekly_active_users, monthly_active_users",
       "monthly_active_agent_users, monthly_active_chat_users, daily_active_cli_users",
       "pr_total_created, pr_total_reviewed, pr_total_merged",
@@ -1344,7 +1372,7 @@ const DATA_MODEL = [
       "pr_total_suggestions, pr_total_applied_suggestions",
       "pr_total_created_by_copilot, pr_total_reviewed_by_copilot",
       "pr_total_merged_created_by_copilot, pr_total_merged_reviewed_by_copilot",
-      "pr_median_minutes_to_merge_copilot_authored",
+      "pr_median_minutes_to_merge_copilot_authored, pr_median_minutes_to_merge_copilot_reviewed",
       "pr_total_copilot_suggestions, pr_total_copilot_applied_suggestions",
     ],
   },
@@ -1370,26 +1398,27 @@ const DATA_MODEL = [
   // ── Raw Data ──
   {
     table: "raw_copilot_usage",
-    description: "Raw API response stored as JSONB. Contains full user-level records including billing cycle dates (report_start_day, report_end_day).",
+    description: "Raw API response stored as JSONB. Contains full user-level records, billing cycle boundaries, and source metadata needed for code-generation and deep-dive analysis.",
     columns: [
-      "user_id, report_date (day)",
+      "id — internal surrogate key",
+      "ingested_at, report_date (day), enterprise_id, user_id, source_team_github_id",
       "report_start_day, report_end_day — billing cycle date range",
-      "raw_json — JSONB column containing the full API response",
-      "content_hash — SHA-256 hash for deduplication",
+      "raw_json — full API response payload",
+      "content_hash — dedupe fingerprint",
     ],
   },
 
   // ── System Tables ──
   {
     table: "ingestion_log",
-    description: "Tracks every data sync operation — API pulls and file uploads — with timing, row counts, and status.",
+    description: "Tracks every ingestion operation — API pulls and file uploads — with timing, row counts, and status.",
     columns: [
       "id — bigserial primary key",
-      "ingestion_date, source (api/upload), scope, scope_detail, org_name",
+      "ingestion_date, source (api/upload), scope, scope_detail, org_name, orgs_discovered",
       "started_at, completed_at, status (running/completed/failed)",
       "records_fetched, records_inserted, records_skipped, aggregate_records",
-      "api_requests — count of GitHub API calls made",
-      "error_message, log_messages — detailed run log",
+      "api_requests — GitHub API calls made",
+      "error_message, log_messages — detailed run logs",
     ],
   },
   {
@@ -1548,33 +1577,39 @@ export default function MetricsInfoPage() {
             </thead>
             <tbody className="text-gray-700 dark:text-gray-300">
               {[
-                { ep: "GET /api/metrics/dashboard", desc: "All Copilot Usage dashboard metrics (12 parallel queries)", params: "days, start, end, userId, orgId, teamId" },
-                { ep: "GET /api/metrics/agents", desc: "Agent impact metrics (8 parallel queries)", params: "days, start, end, userId, orgId, teamId" },
-                { ep: "GET /api/metrics/cli", desc: "CLI impact metrics (11 parallel queries)", params: "days, start, end, userId, orgId, teamId" },
-                { ep: "GET /api/metrics/code-generation", desc: "Code generation LOC breakdown from raw JSONB", params: "days, start, end, userId, orgId, teamId" },
-                { ep: "GET /api/metrics/pull-requests", desc: "Pull request metrics from org aggregate data", params: "days, start, end, orgId" },
-                { ep: "GET /api/metrics/seats", desc: "Live seat assignments from GitHub Billing API", params: "—" },
-                { ep: "GET /api/metrics/premium-requests", desc: "Deprecated — live premium request billing (historical usage before June 1, 2026 only)", params: "year, month" },
-                { ep: "GET /api/metrics/ai-credits", desc: "Live AI Credit billing from GitHub usage-based billing API (after June 1, 2026)", params: "year, month, model, costCenter, orgId, userId, teamId" },
-                { ep: "GET /api/filters", desc: "Filter options (users + orgs list)", params: "—" },
-                { ep: "GET /api/users", desc: "User list with activity stats + license data", params: "days, start, end, search, orgId, segment, limit, offset, sortBy, sortDir" },
-                { ep: "GET /api/data-range", desc: "Synced data date range, row count, and last sync info", params: "—" },
-                { ep: "GET /api/settings", desc: "Application settings (token, slug, schedule)", params: "—" },
+                { ep: "GET /api/metrics/dashboard", desc: "Core usage metrics, trends, model/language breakdowns, and KPI summaries", params: "days, start, end, userId, orgId, teamId" },
+                { ep: "GET /api/metrics/agents", desc: "Agent adoption, IDE vs cloud coding agent, and agent-mode activity metrics", params: "days, start, end, userId, orgId, teamId" },
+                { ep: "GET /api/metrics/cli", desc: "CLI sessions, requests, token usage, and CLI adoption trends", params: "days, start, end, userId, orgId, teamId" },
+                { ep: "GET /api/metrics/code-generation", desc: "LOC and code generation breakdowns derived from raw Copilot usage JSONB", params: "days, start, end, userId, orgId, teamId" },
+                { ep: "GET /api/metrics/pull-requests", desc: "PR creation, merge, review, and Copilot autofix metrics from org aggregates", params: "days, start, end, orgId" },
+                { ep: "GET /api/metrics/ai-adoption", desc: "AI adoption cohort distribution, phase progression, and cohort productivity metrics", params: "days, start, end, userId, orgId, teamId" },
+                { ep: "GET /api/metrics/models", desc: "Model catalog + usage volume broken down by model and feature", params: "days" },
+                { ep: "GET /api/metrics/seats", desc: "Live seat assignments, utilization, plan mix, and cost analysis from GitHub billing", params: "—" },
+                { ep: "GET /api/metrics/premium-requests", desc: "Deprecated historical premium-request billing data for pre-AI-credit periods", params: "year, month" },
+                { ep: "GET /api/metrics/ai-credits", desc: "Live AI Credit billing, entitlement coverage, and usage-based cost breakdowns", params: "year, month, model, costCenter, orgId, userId, teamId" },
+                { ep: "GET /api/filters", desc: "Available filter options for users, orgs, teams, and models", params: "—" },
+                { ep: "GET /api/users", desc: "User directory with activity stats merged with live license data", params: "days, start, end, search, orgId, segment, limit, offset, sortBy, sortDir" },
+                { ep: "GET /api/data-range", desc: "Synced data date range, row counts, and last sync metadata", params: "—" },
+                { ep: "GET /api/settings", desc: "Application settings (GitHub token, enterprise slug, sync config)", params: "—" },
                 { ep: "PUT /api/settings", desc: "Update application settings", params: "JSON body" },
+                { ep: "GET /api/settings/orgs", desc: "Discovered GitHub organizations for configuration and reporting", params: "—" },
                 { ep: "GET /api/settings/sync-history", desc: "Ingestion history log with pagination", params: "limit, offset" },
                 { ep: "GET /api/settings/sync-interval", desc: "Current sync interval configuration", params: "—" },
                 { ep: "PUT /api/settings/sync-interval", desc: "Update sync interval", params: "JSON body" },
                 { ep: "GET /api/settings/sync-schedule", desc: "Current cron schedule configuration", params: "—" },
                 { ep: "PUT /api/settings/sync-schedule", desc: "Update sync schedule", params: "JSON body" },
-                { ep: "POST /api/ingest", desc: "Trigger one-off ingest from GitHub API (sync)", params: "—" },
+                { ep: "POST /api/ingest", desc: "Trigger one-off ingest from GitHub API", params: "—" },
                 { ep: "POST /api/ingest/stream", desc: "Trigger ingest with SSE progress streaming", params: "—" },
-                { ep: "POST /api/ingest/upload", desc: "Upload NDJSON/JSON metrics file with SSE streaming", params: "file (multipart)" },
+                { ep: "POST /api/ingest/upload", desc: "Upload NDJSON/JSON metrics files with SSE progress", params: "file (multipart)" },
                 { ep: "GET /api/enterprise-teams", desc: "List all enterprise teams with member counts", params: "—" },
                 { ep: "GET /api/enterprise-teams/{teamId}/members", desc: "List members of an enterprise team", params: "teamId (path)" },
+                { ep: "GET /api/enterprise-teams/stats", desc: "Team/member totals and latest successful sync timestamp", params: "—" },
                 { ep: "POST /api/enterprise-teams/sync", desc: "Sync enterprise teams from GitHub API", params: "—" },
-                { ep: "GET /api/health", desc: "Database health check (connectivity + latency)", params: "—" },
+                { ep: "GET /api/health", desc: "Database connectivity and latency health check", params: "—" },
                 { ep: "GET /api/settings/app-info", desc: "Non-sensitive application configuration and environment info", params: "—" },
+                { ep: "GET /api/audit-log", desc: "Administrative action history for settings and system operations", params: "limit, offset" },
                 { ep: "POST /api/auth/verify-admin", desc: "Verify admin password for settings access", params: "JSON body" },
+                { ep: "GET /api/auth/verify-dashboard", desc: "Verify dashboard access state for authenticated sessions", params: "—" },
                 { ep: "POST /api/admin/reset", desc: "Reset database (truncate all data tables)", params: "—" },
               ].map((r) => (
                 <tr key={r.ep} className="border-b border-gray-100 dark:border-gray-700">
