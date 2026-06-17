@@ -1,6 +1,6 @@
 {
   "name": "ghcp-dashboard",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "private": true,
   "packageManager": "pnpm@11.5.1",
   "scripts": {
@@ -21,8 +21,8 @@
     "drizzle-orm": "^0.45.2",
     "html2canvas-pro": "^2.0.4",
     "jspdf": "^4.2.1",
-    "lucide-react": "^1.17.0",
-    "next": "^16.2.7",
+    "lucide-react": "^1.18.0",
+    "next": "^16.2.9",
     "postgres": "^3.4.9",
     "react": "^19.2.7",
     "react-chartjs-2": "^5.3.1",
@@ -32,19 +32,19 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@playwright/test": "^1.60.0",
-    "@tailwindcss/postcss": "^4.3.0",
-    "@types/node": "^25.9.1",
+    "@playwright/test": "^1.61.0",
+    "@tailwindcss/postcss": "^4.3.1",
+    "@types/node": "^25.9.3",
     "@types/react": "19.2.15",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.39.4",
-    "eslint-config-next": "^16.2.7",
+    "eslint-config-next": "^16.2.9",
     "postcss": "^8.5.15",
-    "tailwindcss": "^4.3.0",
+    "tailwindcss": "^4.3.1",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.9"
   }
 }

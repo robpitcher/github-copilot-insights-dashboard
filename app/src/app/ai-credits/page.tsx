@@ -12,7 +12,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { usePdfExport } from "@/components/ui/pdf-export";
 import { ConfigurationBanner } from "@/components/layout/configuration-banner";
 import { DataSourceBanner } from "@/components/layout/report-filters";
-import { AlertTriangle, Settings } from "lucide-react";
+import { AlertTriangle, Settings, Lightbulb, ExternalLink } from "lucide-react";
 import Link from "next/link";
 
 interface CreditBucket {
@@ -497,6 +497,34 @@ export default function AiCreditsPage() {
 
       <div className="rounded-lg border border-indigo-100 bg-indigo-50 p-3 text-xs text-indigo-800 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-300">
         {t("aiCredits.ubbNotice")}
+      </div>
+
+      {/* Token optimization resources */}
+      <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-5 dark:border-indigo-800 dark:bg-indigo-900/30">
+        <div className="flex items-center gap-2">
+          <Lightbulb className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+          <h3 className="font-semibold text-indigo-900 dark:text-indigo-200">{t("aiCredits.optimizeTitle")}</h3>
+        </div>
+        <p className="mt-1 text-sm text-indigo-700 dark:text-indigo-300">{t("aiCredits.optimizeDesc")}</p>
+        <ul className="mt-3 grid grid-cols-1 gap-2 text-sm text-indigo-700 dark:text-indigo-300 md:grid-cols-2">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <li key={n} className="flex items-start gap-2">
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400 dark:bg-indigo-500" />
+              <span>
+                {t(`aiCredits.optimizeTip${n}`)}
+                {" — "}
+                <a
+                  href={t(`aiCredits.optimizeTip${n}Link`)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-medium underline hover:text-indigo-900 dark:hover:text-indigo-100"
+                >
+                  {t(`aiCredits.optimizeTip${n}LinkText`)} <ExternalLink className="h-3 w-3" />
+                </a>
+              </span>
+            </li>
+          ))}
+        </ul>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">

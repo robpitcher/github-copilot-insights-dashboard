@@ -7,12 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-06-17
+
 ### Added
 
 - **AI Adoption dashboard** — new `/ai-adoption` report and `/api/metrics/ai-adoption` endpoint with user-level cohort classification (`noCohort`, `codeFirst`, `agentFirst`, `multiAgent`) and progression/per-cohort analytics
 - **AI Credits dashboard** — new `/ai-credits` report and `/api/metrics/ai-credits` endpoint using GitHub AI credit billing usage with model/org/team/user breakdowns and trend views
 - **AI credit snapshot fact table** — `fact_ai_credit_usage` and migration `20260602170000_ai_credit_usage.sql` to persist billing snapshots for trailing-month analysis
 - **Shared report context banner** — `ReportBanner` component integrated across report pages for a unified “About this report” section
+- **AI Credit optimization resources** — new “Optimize token usage to lower AI Credit consumption” card on the `/ai-credits` report linking official GitHub billing/pricing docs and community token-optimization guides (en/ar/es/fr)
+- **Deployment guide** — restructured README deployment into two paths: **Azure (recommended, `azd up`)** and **self-hosted (bring your own infrastructure, Docker)**, each with full requirements
+- **Azure cost estimate** — documented an estimated monthly Azure cost (North Europe) for the default deployment in the README
 
 ### Changed
 
@@ -21,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **Sidebar branding icon** — switched to the Copilot Insights icon in the sidebar header
 - **AI Credits KPIs** — replaced the Credits/Seat KPI with a credit-pool utilization view (consumed vs remaining included pool)
 - **Premium Requests positioning** — kept as a deprecated historical report in navigation and documentation
+- **Licensing enablement guidance** — renamed “Enablement Opportunity” → “Enablement Opportunities” and refreshed it with the latest frontier models (Claude Opus 4.8, GPT-5.5, Gemini 3.1 Pro) and current GitHub documentation links (en/ar/es/fr)
+- **README refresh** — clearer, more descriptive title and tagline plus section emojis to improve scannability ahead of the first public release
 
 ## [0.8.0] — 2026-04-12
 

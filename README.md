@@ -1,6 +1,6 @@
-# Copilot Insights
+# 📊 Copilot Insights — Enterprise Analytics for GitHub Copilot
 
-Enterprise analytics dashboard for **GitHub Copilot** — giving engineering leaders full visibility into usage, adoption, licensing costs, and AI model activity across their organization.
+> **Turn GitHub Copilot usage into actionable insight.** Give engineering leaders full visibility into **adoption**, **licensing costs**, **AI credit spend**, and **AI model activity** — across every team and organization, in one self-hostable dashboard.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black)
 ![React](https://img.shields.io/badge/React-19-blue)
@@ -8,17 +8,17 @@ Enterprise analytics dashboard for **GitHub Copilot** — giving engineering lea
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-## Why Copilot Insights?
+## 💡 Why Copilot Insights?
 
 GitHub Copilot is transforming how teams write code — but without visibility into how it's being used, it's hard to measure the return on your investment. Copilot Insights bridges that gap by providing:
 
-- **Adoption tracking** — see which teams and users are actively using Copilot, and where adoption lags
-- **License optimization** — identify unused seats and potential savings across your enterprise
-- **Model intelligence** — understand which AI models drive the most value and how AI credit budgets are consumed
-- **Productivity metrics** — measure code completions, agent usage, PR impact, and CLI adoption in one place
-- **Enterprise governance** — role-based access, audit logging, and team-level filtering for compliance
+- 📈 **Adoption tracking** — see which teams and users are actively using Copilot, and where adoption lags
+- 💰 **License optimization** — identify unused seats and potential savings across your enterprise
+- 🤖 **Model intelligence** — understand which AI models drive the most value and how AI credit budgets are consumed
+- ⚡ **Productivity metrics** — measure code completions, agent usage, PR impact, and CLI adoption in one place
+- 🔒 **Enterprise governance** — role-based access, audit logging, and team-level filtering for compliance
 
-## Dashboard Pages
+## 🗂️ Dashboard Pages
 
 | Page | Route | Description |
 |---|---|---|
@@ -36,18 +36,18 @@ GitHub Copilot is transforming how teams write code — but without visibility i
 | **Enterprise Teams** | `/enterprise-teams` | Team management with member sync from GitHub Enterprise Teams API |
 | **Metrics Reference** | `/reference` | 200+ metric definitions, calculation formulas, and data sources |
 
-### Cross-cutting Features
+### ✨ Cross-cutting Features
 
-- **Internationalization** — 4 languages (English, Arabic RTL, Spanish, French) via `useTranslation()` hook
-- **Dark/Light/System theme** — three-mode theme with `dark:` Tailwind variants and theme-aware Chart.js options
-- **PDF export** — one-click PDF generation for all dashboard pages
-- **Multi-select filters** — filter charts by organization, enterprise team, user, model, or language
-- **Configuration banner** — shown when GitHub token or enterprise slug is missing
-- **About report context** — each report includes an “About this report” banner with metric scope/context
-- **Audit logging** — tracks admin actions for compliance
-- **Dashboard auth gate** — optional password protection for all dashboard pages
+- 🌍 **Internationalization** — 4 languages (English, Arabic RTL, Spanish, French) via `useTranslation()` hook
+- 🌓 **Dark/Light/System theme** — three-mode theme with `dark:` Tailwind variants and theme-aware Chart.js options
+- 📄 **PDF export** — one-click PDF generation for all dashboard pages
+- 🔎 **Multi-select filters** — filter charts by organization, enterprise team, user, model, or language
+- 🚩 **Configuration banner** — shown when GitHub token or enterprise slug is missing
+- ℹ️ **About report context** — each report includes an “About this report” banner with metric scope/context
+- 📝 **Audit logging** — tracks admin actions for compliance
+- 🔐 **Dashboard auth gate** — optional password protection for all dashboard pages
 
-## Screenshots
+## 📸 Screenshots
 
 ### Landing Page
 
@@ -139,7 +139,7 @@ Schedule automatic syncs, trigger manual pulls, or upload NDJSON exports.
 
 ![Data Sync](docs/screenshots/data-sync.png)
 
-## Architecture
+## 🏗️ Architecture
 
 - **Frontend**: Next.js 16.2 App Router, React 19.2, Tailwind CSS 4.2, Chart.js 4.5
 - **Backend**: Next.js API routes, Drizzle ORM 0.45, Zod 4.3
@@ -150,14 +150,14 @@ Schedule automatic syncs, trigger manual pulls, or upload NDJSON exports.
 
 See [docs/architecture.md](docs/architecture.md) for detailed architecture documentation.
 
-## Prerequisites
+## ✅ Prerequisites
 
 - **Node.js** 24+ and **pnpm** (`corepack enable`)
 - **PostgreSQL** 18+ (local or cloud)
 - **GitHub Enterprise Cloud** with Copilot enabled
 - **GitHub Personal Access Token** with `manage_billing:copilot`, `read:enterprise`, `read:org` scopes
 
-## Quick Start
+## 🚀 Quick Start
 
 ```bash
 # 1. Clone the repository
@@ -181,7 +181,7 @@ pnpm run dev
 
 Open [http://localhost:3000](http://localhost:3000) and navigate to **Settings** to configure your GitHub token and sync schedule.
 
-## Environment Variables
+## ⚙️ Environment Variables
 
 | Variable | Required | Description |
 |---|---|---|
@@ -195,29 +195,71 @@ Open [http://localhost:3000](http://localhost:3000) and navigate to **Settings**
 > For any non-local deployment, set `ADMIN_PASSWORD` to protect the **Settings** page. The Settings UI can configure the GitHub token, Enterprise slug, and sync interval. If dashboard pages should not be publicly accessible, also set `DASHBOARD_PASSWORD`. Leaving these unset is only recommended for local development on a trusted machine.
 The **GitHub token**, **Enterprise slug**, and **sync interval** are configured via the Settings UI and stored in the database.
 
-## Deploy to Azure
+## 🚢 Deployment
 
-This project includes Infrastructure as Code (Bicep) for Azure deployment via the [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/).
+**Azure is the recommended — and simplest — way to get the dashboard up and running.** A single `azd up` provisions every resource, wires up secrets and managed identity, and deploys the app. If you'd rather run it yourself, a self-hosted option is fully supported too.
+
+### ⭐ Option 1 — Azure (recommended)
+
+The fastest path to a production-ready deployment. This project ships Infrastructure as Code (Bicep) and an [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/) configuration, so one command stands everything up for you (Container Apps, PostgreSQL, Container Registry, Key Vault, and Application Insights).
+
+**Requirements**
+
+- An Azure subscription
+- [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
+- [Docker](https://www.docker.com/) (used to build the app image)
+
+**Deploy**
 
 ```bash
-# Install Azure Developer CLI if needed
-# https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd
-
-# Deploy everything (infrastructure + app)
+# Provision infrastructure + deploy the app (first run)
 azd up
 
 # Subsequent deploys (app only)
 azd deploy
 ```
 
-Resources provisioned:
-- Azure Container Apps (0.5 vCPU, 1 GiB, scale 0–3)
-- Azure Database for PostgreSQL Flexible Server (B1ms, 32 GB)
-- Azure Container Registry (Basic)
-- Azure Key Vault (secrets for DB URL, GitHub token, admin password)
-- Application Insights + Log Analytics
+When the deploy finishes, `azd` prints the app URL. Open it, go to **Settings**, and add your GitHub token and sync schedule — that's it.
 
-## Project Structure
+#### 💵 Estimated monthly cost
+
+A typical deployment in the **North Europe** region costs **approximately $45 / month** (USD), ranging from roughly **$35 to $65 / month** depending on dashboard traffic and log volume. Figures are pay-as-you-go list-price estimates; reserved capacity or savings plans reduce them further. For a precise quote, use the [Azure Pricing Calculator](https://azure.microsoft.com/pricing/calculator/).
+
+### 🐳 Option 2 — Self-hosted (bring your own infrastructure)
+
+Run the dashboard anywhere you can host a container — your own VM, Kubernetes, another cloud, or on-premises.
+
+**Requirements**
+
+- **PostgreSQL** 18+ (managed or self-run), reachable from the app
+- **Docker** — the app ships a production `Dockerfile` with Next.js standalone output (or use **Node.js** 24+ and **pnpm** for local development)
+- **TLS / reverse proxy** (e.g. nginx, Caddy) in front of the app for any shared deployment
+- **GitHub Personal Access Token** with `manage_billing:copilot`, `read:enterprise`, `read:org` (added later via the Settings UI)
+- Environment variables (see [Environment Variables](#environment-variables)):
+  - `DATABASE_URL` — **required**
+  - `ADMIN_PASSWORD` — **required** for any shared/non-local deployment
+  - `DASHBOARD_PASSWORD` — optional, gates all dashboard pages
+  - `APPLICATIONINSIGHTS_CONNECTION_STRING` — optional, enables telemetry
+
+**Run with Docker**
+
+```bash
+# Build the production image
+docker build -t copilot-insights ./app
+
+# Run it against your PostgreSQL instance
+docker run -p 3000:3000 \
+  -e DATABASE_URL="postgresql://user:pass@host:5432/copilot_insights?sslmode=require" \
+  -e ADMIN_PASSWORD="<strong-password>" \
+  copilot-insights
+```
+
+Database migrations run automatically on startup. Once the container is up, open `http://localhost:3000` (or your proxied URL), go to **Settings**, and configure your GitHub token and sync schedule.
+
+> [!TIP]
+> For local development, use the [Quick Start](#quick-start) above (`pnpm run dev`) instead of building a container.
+
+## 📁 Project Structure
 
 ```
 ghcp-dashboard/
@@ -251,7 +293,7 @@ ghcp-dashboard/
 └── azure.yaml                    # Azure Developer CLI config
 ```
 
-## Scripts
+## 📜 Scripts
 
 ```bash
 pnpm run dev          # Start dev server
@@ -264,7 +306,7 @@ pnpm run db:push      # Push schema to DB
 pnpm run ingest       # Manual data ingest
 ```
 
-## Data Sync
+## 🔄 Data Sync
 
 The dashboard supports two sync modes:
 
@@ -273,6 +315,6 @@ The dashboard supports two sync modes:
 
 Both modes call the GitHub Copilot Usage Metrics API (v2026-03-10) and transform the data into a star schema for analytics queries.
 
-## License
+## 📄 License
 
 [MIT](LICENSE)
