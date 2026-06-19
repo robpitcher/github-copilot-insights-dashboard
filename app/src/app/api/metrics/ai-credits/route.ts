@@ -3,53 +3,22 @@ import { z } from "zod";
 import { getGitHubConfig } from "@/lib/db/settings";
 import { resolveUserNames } from "@/lib/github/resolve-display-names";
 import { getModelDisplayName } from "@/lib/utils/model-display-names";
-import { safeErrorMessage } from "@/lib/auth";
 import {
-  persistAiCreditSnapshot,
-  getAiCreditMonthlyTotalsFromDb,
+  safeErrorMessage,
+  getIdentitySessionFromRequest,
+  resolveUserScope,
+} from "@/lib/auth";
+import {
+  getAiCreditItemsByMonthFromDb,
   monthKey,
   type NormalizedAiCreditItem,
 } from "@/lib/db/ai-credit-usage";
-import { getCreditConsumption } from "@/lib/db/ai-credit-consumption";
+import { getCreditConsumption, emptyConsumption } from "@/lib/db/ai-credit-consumption";
 
 export const dynamic = "force-dynamic";
 
 const GITHUB_API_BASE = "https://api.github.com";
 const API_VERSION = "2026-03-10";
-
-/**
- * Raw AI Credit usage item as returned by
- * `/enterprises/{enterprise}/settings/billing/ai_credit/usage`.
- * The aggregated form keys on (model, sku); enriched line items may also carry
- * date / organization / user / team / cost-center dimensions.
- */
-interface AiCreditUsageItem {
-  product?: string;
-  sku?: string;
-  model?: string;
-  unitType?: string;
-  unitTypeString?: string;
-  pricePerUnit?: number;
-  grossQuantity?: number;
-  grossAmount?: number;
-  discountQuantity?: number;
-  discountAmount?: number;
-  netQuantity?: number;
-  netAmount?: number;
-  // Optional dimensions present on enriched (non-aggregated) responses.
-  date?: string;
-  organizationName?: string;
-  user?: string;
-  team?: string;
-  costCenterName?: string;
-  costCenter?: string;
-}
-
-interface AiCreditUsageResponse {
-  timePeriod?: { year: number; month: number };
-  enterprise?: string;
-  usageItems: AiCreditUsageItem[];
-}
 
 interface SeatInfo {
   plan_type: string;
@@ -70,20 +39,6 @@ const querySchema = z.object({
   teamId: z.string().optional(),
 });
 
-class GitHubHttpError extends Error {
-  status: number;
-  statusText: string;
-  body: string;
-
-  constructor(status: number, statusText: string, body: string) {
-    super(`GitHub API error: ${status} ${statusText}`);
-    this.name = "GitHubHttpError";
-    this.status = status;
-    this.statusText = statusText;
-    this.body = body;
-  }
-}
-
 function parseCsvSet(value?: string): Set<string> | null {
   if (!value) return null;
   const values = value
@@ -96,10 +51,6 @@ function parseCsvSet(value?: string): Set<string> | null {
 function shiftMonth(year: number, month: number, delta: number): { year: number; month: number } {
   const d = new Date(Date.UTC(year, month - 1 + delta, 1));
   return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1 };
-}
-
-function num(v: number | undefined): number {
-  return typeof v === "number" && Number.isFinite(v) ? v : 0;
 }
 
 /**
@@ -153,52 +104,6 @@ function computeCreditPool(
 }
 
 /** Normalize a raw API item into the shared snapshot shape. */
-function normalizeItem(item: AiCreditUsageItem): NormalizedAiCreditItem {
-  return {
-    usageDate: item.date ?? null,
-    product: item.product ?? "Copilot",
-    sku: item.sku ?? "",
-    model: item.model ?? item.sku ?? "",
-    costCenter: item.costCenterName ?? item.costCenter ?? null,
-    orgName: item.organizationName ?? null,
-    userLogin: item.user ?? null,
-    teamName: item.team ?? null,
-    unitType: item.unitTypeString ?? item.unitType ?? "ai-credits",
-    pricePerUnit: num(item.pricePerUnit),
-    grossQuantity: num(item.grossQuantity),
-    discountQuantity: num(item.discountQuantity),
-    netQuantity: num(item.netQuantity),
-    grossAmount: num(item.grossAmount),
-    discountAmount: num(item.discountAmount),
-    netAmount: num(item.netAmount),
-  };
-}
-
-async function fetchUsageItems(
-  token: string,
-  enterpriseSlug: string,
-  year: number,
-  month: number
-): Promise<NormalizedAiCreditItem[]> {
-  const usageUrl = `${GITHUB_API_BASE}/enterprises/${encodeURIComponent(enterpriseSlug)}/settings/billing/ai_credit/usage?year=${year}&month=${month}`;
-  const usageRes = await fetch(usageUrl, {
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: "Bearer " + token,
-      "X-GitHub-Api-Version": API_VERSION,
-    },
-    next: { revalidate: 0 },
-  });
-
-  if (!usageRes.ok) {
-    const body = await usageRes.text();
-    throw new GitHubHttpError(usageRes.status, usageRes.statusText, body);
-  }
-
-  const data: AiCreditUsageResponse = await usageRes.json();
-  return (data.usageItems ?? []).map(normalizeItem);
-}
-
 interface MatchFilters {
   model: Set<string> | null;
   costCenter: Set<string> | null;
@@ -285,40 +190,29 @@ export async function GET(request: NextRequest) {
     const year = parsed.year ?? now.getFullYear();
     const month = parsed.month ?? now.getMonth() + 1;
 
+    // Server-side row-level scoping: a `developer` is forced to their own login
+    // at the billing layer (derived from their identity session, never the UI).
+    // Admins and open/shared-password modes read all users' rows; per-user
+    // filtering for those roles is served by the consumption layer (userId) below.
+    const session = getIdentitySessionFromRequest(request);
+    const scope = resolveUserScope(session, null);
+    const scopedUser = scope.forced ? scope.user : null;
+
     const selectedFilters: MatchFilters = {
       model: parseCsvSet(parsed.model),
       costCenter: parseCsvSet(parsed.costCenter),
     };
 
-    // 1. Fetch selected-month AI Credit usage.
-    let usageItems: NormalizedAiCreditItem[] = [];
-    try {
-      usageItems = await fetchUsageItems(token, enterpriseSlug, year, month);
-    } catch (err) {
-      if (err instanceof GitHubHttpError) {
-        console.error(`AI Credit billing API error: ${err.status}`, err.body);
-        if (err.status === 403) {
-          return NextResponse.json(
-            { error: "Access denied. Your PAT may not have the required scopes. Please ensure it has: manage_billing:copilot (read) or manage_billing:enterprise (read). Update scopes at https://github.com/settings/tokens" },
-            { status: 403 }
-          );
-        }
-        if (err.status === 404) {
-          return NextResponse.json(
-            { error: "Enterprise not found, or AI Credit usage is not yet available for this period (the ai_credit/usage endpoint only returns activity after June 1, 2026). Verify the enterprise slug in Settings." },
-            { status: 404 }
-          );
-        }
-        return NextResponse.json(
-          { error: `GitHub AI Credit Billing API error: ${err.status} ${err.statusText}` },
-          { status: err.status }
-        );
-      }
-      throw err;
-    }
-
-    // Persist this month's snapshot (best-effort) for trend continuity.
-    await persistAiCreditSnapshot(enterpriseSlug, year, month, usageItems);
+    // 1. Read AI Credit usage from persisted rows (no live export on page load).
+    // The selected month + a trailing window are read in one pass. When a
+    // developer scope is active, only that user's rows are returned from the DB.
+    const monthPoints = Array.from({ length: 6 }, (_, idx) => shiftMonth(year, month, idx - 5));
+    const itemsByMonth = await getAiCreditItemsByMonthFromDb(
+      enterpriseSlug,
+      monthPoints,
+      scopedUser
+    );
+    const usageItems: NormalizedAiCreditItem[] = itemsByMonth.get(monthKey(year, month)) ?? [];
 
     // 2. Fetch seat data for "credits per seat" context (deduped, highest plan wins).
     const allSeats: SeatInfo[] = [];
@@ -416,14 +310,19 @@ export async function GET(request: NextRequest) {
     const windowStart = `${year}-${String(month).padStart(2, "0")}-01`;
     const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
     const windowEnd = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-    const consumption = await getCreditConsumption(windowStart, windowEnd, {
-      userIds: (parsed.userId ?? "")
-        .split(",")
-        .map((s) => parseInt(s.trim(), 10))
-        .filter((n) => Number.isInteger(n)),
-      orgId: parsed.orgId,
-      teamId: parsed.teamId,
-    });
+    // Row-level security: the consumption layer is org-wide (per-user across the
+    // enterprise), so a forced `developer` scope never receives it — they only
+    // ever see their own billing rows (scoped above). Admins/open read the full set.
+    const consumption = scope.forced
+      ? emptyConsumption()
+      : await getCreditConsumption(windowStart, windowEnd, {
+          userIds: (parsed.userId ?? "")
+            .split(",")
+            .map((s) => parseInt(s.trim(), 10))
+            .filter((n) => Number.isInteger(n)),
+          orgId: parsed.orgId,
+          teamId: parsed.teamId,
+        });
 
     // Resolve display names for every login surfaced in the response: the
     // rendered breakdown rows (billing + consumption) and the user filter
@@ -464,32 +363,21 @@ export async function GET(request: NextRequest) {
         poolBase.total > 0 ? Math.round((poolConsumedAmount / poolBase.total) * 100) : 0,
     };
 
-    // 6. Trailing 6-month trend — DB snapshots first, live API fallback per month.
-    const monthPoints = Array.from({ length: 6 }, (_, idx) => shiftMonth(year, month, idx - 5));
-    const dbTotals = await getAiCreditMonthlyTotalsFromDb(enterpriseSlug, monthPoints);
-    const hasActiveFilters = Object.values(selectedFilters).some((f) => f !== null);
-
-    const monthlyTrend = await Promise.all(
-      monthPoints.map(async (point) => {
+    // 6. Trailing 6-month trend — computed from persisted rows (already scoped).
+    const monthlyTrend = monthPoints.map((point) => {
         const key = monthKey(point.year, point.month);
         const isCurrent = point.year === year && point.month === month;
 
-        let bucket: CreditBucket | null = null;
+        let bucket: CreditBucket;
         if (isCurrent) {
           bucket = totals;
-        } else if (!hasActiveFilters && dbTotals.has(key)) {
-          // Snapshots store unfiltered totals; only use them when no filter is applied.
-          bucket = dbTotals.get(key)!;
         } else {
-          try {
-            const monthItems = await fetchUsageItems(token, enterpriseSlug, point.year, point.month);
-            const filtered = monthItems.filter((item) => usageMatchesFilters(item, selectedFilters));
-            const b = emptyBucket();
-            for (const item of filtered) addToBucket(b, item);
-            bucket = b;
-          } catch {
-            bucket = emptyBucket();
-          }
+          const monthItems = (itemsByMonth.get(key) ?? []).filter((item) =>
+            usageMatchesFilters(item, selectedFilters)
+          );
+          const b = emptyBucket();
+          for (const item of monthItems) addToBucket(b, item);
+          bucket = b;
         }
 
         return {
@@ -501,8 +389,7 @@ export async function GET(request: NextRequest) {
           grossAmount: round2(bucket.grossAmount),
           netAmount: round2(bucket.netAmount),
         };
-      })
-    );
+      });
 
     const currentTrendPoint = monthlyTrend[monthlyTrend.length - 1];
     const previousTrendPoint = monthlyTrend[monthlyTrend.length - 2] ?? null;

@@ -324,6 +324,42 @@ export function verifyIdentitySession(token: string): IdentitySession | null {
   return { login, id, role };
 }
 
+/**
+ * Extract and verify the identity session carried on a request's
+ * `identity_session` cookie. Returns null when identity mode is disabled, no
+ * cookie is present, or the token is invalid/expired. Use this in API route
+ * handlers to enforce server-side, row-level scoping.
+ */
+export function getIdentitySessionFromRequest(
+  request: Request,
+): IdentitySession | null {
+  if (!isIdentityModeEnabled()) return null;
+  const token = getCookieValue(request, COOKIE_IDENTITY);
+  if (!token) return null;
+  return verifyIdentitySession(token);
+}
+
+/**
+ * Resolve the effective per-user scope for a request. A `developer` is always
+ * forced to their own login regardless of any client-supplied `user` value, so
+ * a crafted `?user=<other-login>` can never read another user's rows. Admins
+ * (and open / shared-password modes where there is no identity session) keep the
+ * requested value. The returned `user` is lowercased for case-insensitive
+ * matching against stored `user_login` values.
+ */
+export function resolveUserScope(
+  session: IdentitySession | null,
+  requestedUser: string | null | undefined,
+): { user: string | null; forced: boolean } {
+  if (session && session.role === "developer") {
+    return { user: session.login.toLowerCase(), forced: true };
+  }
+  return {
+    user: requestedUser == null ? null : requestedUser.toLowerCase(),
+    forced: false,
+  };
+}
+
 /* ── Auth Guards ── */
 
 /**

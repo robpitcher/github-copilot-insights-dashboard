@@ -86,6 +86,20 @@ async function runIngestion() {
       console.error("Scheduled enterprise context sync failed:", contextErr);
     }
 
+    // Persist per-user AI Credit usage via the async report export so the
+    // dashboard can read rows from the DB instead of a live export on page load.
+    // (Issue C2 moves this to a dedicated cron Job and removes it from here.)
+    try {
+      const { ingestAiCreditUsage } = await import("@/lib/etl/ai-credit-report");
+      console.info("Scheduled AI Credit ingestion started");
+      const creditResult = await ingestAiCreditUsage({ token, enterpriseSlug });
+      console.info(
+        `Scheduled AI Credit ingestion complete — rows: ${creditResult.rowsPersisted}, months: ${creditResult.monthsPersisted}`
+      );
+    } catch (creditErr) {
+      console.error("Scheduled AI Credit ingestion failed:", creditErr);
+    }
+
     // Enforce audit-log retention so the table doesn't grow unbounded.
     try {
       const { pruneAuditLog } = await import("@/lib/audit");

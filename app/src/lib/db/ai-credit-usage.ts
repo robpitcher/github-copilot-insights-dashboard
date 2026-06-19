@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "./index";
 import { factAiCreditUsage } from "./schema";
 
@@ -155,3 +155,108 @@ export async function getAiCreditMonthlyTotalsFromDb(
 
   return result;
 }
+
+/** Convert a persisted fact row into the shared normalized item shape. */
+function rowToNormalizedItem(row: {
+  usageDate: string | null;
+  product: string;
+  sku: string;
+  model: string;
+  costCenter: string | null;
+  orgName: string | null;
+  userLogin: string | null;
+  teamName: string | null;
+  unitType: string;
+  pricePerUnit: string;
+  grossQuantity: string;
+  discountQuantity: string;
+  netQuantity: string;
+  grossAmount: string;
+  discountAmount: string;
+  netAmount: string;
+}): NormalizedAiCreditItem {
+  return {
+    usageDate: row.usageDate,
+    product: row.product,
+    sku: row.sku,
+    model: row.model,
+    costCenter: row.costCenter,
+    orgName: row.orgName,
+    userLogin: row.userLogin,
+    teamName: row.teamName,
+    unitType: row.unitType,
+    pricePerUnit: Number(row.pricePerUnit),
+    grossQuantity: Number(row.grossQuantity),
+    discountQuantity: Number(row.discountQuantity),
+    netQuantity: Number(row.netQuantity),
+    grossAmount: Number(row.grossAmount),
+    discountAmount: Number(row.discountAmount),
+    netAmount: Number(row.netAmount),
+  };
+}
+
+const itemColumns = {
+  periodYear: factAiCreditUsage.periodYear,
+  periodMonth: factAiCreditUsage.periodMonth,
+  usageDate: factAiCreditUsage.usageDate,
+  product: factAiCreditUsage.product,
+  sku: factAiCreditUsage.sku,
+  model: factAiCreditUsage.model,
+  costCenter: factAiCreditUsage.costCenter,
+  orgName: factAiCreditUsage.orgName,
+  userLogin: factAiCreditUsage.userLogin,
+  teamName: factAiCreditUsage.teamName,
+  unitType: factAiCreditUsage.unitType,
+  pricePerUnit: factAiCreditUsage.pricePerUnit,
+  grossQuantity: factAiCreditUsage.grossQuantity,
+  discountQuantity: factAiCreditUsage.discountQuantity,
+  netQuantity: factAiCreditUsage.netQuantity,
+  grossAmount: factAiCreditUsage.grossAmount,
+  discountAmount: factAiCreditUsage.discountAmount,
+  netAmount: factAiCreditUsage.netAmount,
+} as const;
+
+/**
+ * Read persisted AI Credit line items for the given periods, bucketed by
+ * `${year}-${month}`. When `userScope` is provided, only that user's rows are
+ * returned — the row-level guard that prevents a developer from ever reading
+ * another user's data. Comparison against stored `user_login` is
+ * case-insensitive. Best-effort: returns an empty map on failure.
+ */
+export async function getAiCreditItemsByMonthFromDb(
+  enterpriseSlug: string,
+  points: Array<{ year: number; month: number }>,
+  userScope?: string | null
+): Promise<Map<string, NormalizedAiCreditItem[]>> {
+  const result = new Map<string, NormalizedAiCreditItem[]>();
+  if (points.length === 0) return result;
+
+  const wanted = new Set(points.map((p) => monthKey(p.year, p.month)));
+  const scope = userScope ? userScope.toLowerCase() : null;
+
+  try {
+    const conditions = [eq(factAiCreditUsage.enterpriseSlug, enterpriseSlug)];
+    // Enforce the developer row-level scope in SQL so other users' rows are
+    // never read from the DB (defense in depth + less data over the wire).
+    if (scope) {
+      conditions.push(eq(sql`lower(${factAiCreditUsage.userLogin})`, scope));
+    }
+    const rows = await db
+      .select(itemColumns)
+      .from(factAiCreditUsage)
+      .where(and(...conditions));
+
+    for (const row of rows) {
+      const key = monthKey(row.periodYear, row.periodMonth);
+      if (!wanted.has(key)) continue;
+      const bucket = result.get(key) ?? [];
+      bucket.push(rowToNormalizedItem(row));
+      result.set(key, bucket);
+    }
+  } catch (err) {
+    console.warn("getAiCreditItemsByMonthFromDb failed:", err);
+  }
+
+  return result;
+}
+

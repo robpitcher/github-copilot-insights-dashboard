@@ -207,10 +207,11 @@ export default function ConfigurationPage() {
         <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
           <strong className="text-gray-700 dark:text-gray-300">Classic</strong> (recommended for enterprise):{" "}
           <code className="rounded-sm bg-gray-100 px-1 dark:bg-gray-700">manage_billing:copilot</code>,{" "}
+          <code className="rounded-sm bg-gray-100 px-1 dark:bg-gray-700">manage_billing:enterprise</code>,{" "}
           <code className="rounded-sm bg-gray-100 px-1 dark:bg-gray-700">read:enterprise</code>,{" "}
           <code className="rounded-sm bg-gray-100 px-1 dark:bg-gray-700">read:org</code>.{" "}
           <a
-            href="https://github.com/settings/tokens/new?scopes=manage_billing:copilot,read:enterprise,read:org&description=Copilot+Insights+Dashboard"
+            href="https://github.com/settings/tokens/new?scopes=manage_billing:copilot,manage_billing:enterprise,read:enterprise,read:org&description=Copilot+Insights+Dashboard"
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-600 hover:underline dark:text-blue-400"
@@ -403,6 +404,12 @@ export default function ConfigurationPage() {
                 <td className="px-3 py-2 text-gray-400 italic dark:text-gray-500">No scope required (any valid token)</td>
               </tr>
               <tr>
+                <td className="px-3 py-2 font-mono text-gray-700 dark:text-gray-300">POST/GET /enterprises/{"{slug}"}/settings/billing/reports</td>
+                <td className="px-3 py-2 text-gray-500 dark:text-gray-400">AI Credit usage report export (async; persists per-user rows after June 1, 2026)</td>
+                <td className="px-3 py-2 text-gray-500 dark:text-gray-400">2026-03-10</td>
+                <td className="px-3 py-2"><code className="rounded-sm bg-gray-100 px-1 text-gray-700 dark:bg-gray-700 dark:text-gray-300">manage_billing:enterprise</code></td>
+              </tr>
+              <tr>
                 <td className="px-3 py-2 font-mono text-gray-700 dark:text-gray-300">GET /user/orgs</td>
                 <td className="px-3 py-2 text-gray-500 dark:text-gray-400">Discover organizations accessible to the token</td>
                 <td className="px-3 py-2 text-gray-500 dark:text-gray-400">2026-03-10</td>
@@ -451,6 +458,7 @@ export default function ConfigurationPage() {
           All endpoints use <code className="rounded-sm bg-gray-100 px-1 dark:bg-gray-700">Bearer</code> token authentication.
           For full coverage, the recommended classic PAT scopes are:{" "}
           <code className="rounded-sm bg-gray-100 px-1 dark:bg-gray-700">manage_billing:copilot</code>,{" "}
+          <code className="rounded-sm bg-gray-100 px-1 dark:bg-gray-700">manage_billing:enterprise</code>,{" "}
           <code className="rounded-sm bg-gray-100 px-1 dark:bg-gray-700">read:enterprise</code>,{" "}
           <code className="rounded-sm bg-gray-100 px-1 dark:bg-gray-700">read:org</code>.
         </p>

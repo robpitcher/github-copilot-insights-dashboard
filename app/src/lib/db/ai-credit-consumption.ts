@@ -63,7 +63,7 @@ export interface CreditConsumptionResult {
 
 const round2 = (v: number): number => Math.round(v * 100) / 100;
 
-function emptyConsumption(): CreditConsumptionResult {
+export function emptyConsumption(): CreditConsumptionResult {
   return {
     available: false,
     totalCreditsUsed: 0,

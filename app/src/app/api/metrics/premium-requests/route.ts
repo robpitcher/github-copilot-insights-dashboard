@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getGitHubConfig } from "@/lib/db/settings";
 import { resolveUserNames } from "@/lib/github/resolve-display-names";
 import { getModelDisplayName } from "@/lib/utils/model-display-names";
-import { safeErrorMessage } from "@/lib/auth";
+import { safeErrorMessage, getIdentitySessionFromRequest, resolveUserScope } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -142,10 +142,16 @@ export async function GET(request: NextRequest) {
     const year = parsed.year ?? now.getFullYear();
     const month = parsed.month ?? now.getMonth() + 1;
 
+    // Server-side row-level scoping: a `developer` is forced to their own login
+    // regardless of any client-supplied `user=`; admins (and open/shared-password
+    // modes) keep cross-user access. Enforced here, never in the UI alone.
+    const session = getIdentitySessionFromRequest(request);
+    const scope = resolveUserScope(session, parsed.user ?? null);
+
     const selectedFilters = {
       model: parseCsvSet(parsed.model),
       org: parseCsvSet(parsed.org),
-      user: parseCsvSet(parsed.user),
+      user: scope.forced ? new Set([scope.user!]) : parseCsvSet(parsed.user),
       team: parseCsvSet(parsed.team),
     };
 
@@ -174,6 +180,14 @@ export async function GET(request: NextRequest) {
         );
       }
       throw err;
+    }
+
+    // Scope live usage rows to the developer's own login so neither the filter
+    // option lists nor the breakdowns can expose another user's data.
+    if (scope.forced) {
+      usageItems = usageItems.filter(
+        (item) => (item.user ?? "").toLowerCase() === scope.user
+      );
     }
 
     // 2. Fetch seat data for plan quotas (deduplicated by user — highest plan wins)
@@ -388,7 +402,7 @@ export async function GET(request: NextRequest) {
         selected: {
           model: parsed.model ?? "",
           org: parsed.org ?? "",
-          user: parsed.user ?? "",
+          user: scope.forced ? scope.user! : (parsed.user ?? ""),
           team: parsed.team ?? "",
         },
       },
