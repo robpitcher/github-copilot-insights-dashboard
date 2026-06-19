@@ -15,6 +15,18 @@ param dashboardPassword string = ''
 
 param hasDashboardPassword bool = false
 
+param githubOauthClientId string = ''
+
+@secure()
+param githubOauthClientSecret string = ''
+
+@secure()
+param sessionSecret string = ''
+
+param adminLogins string = ''
+
+param hasIdentity bool = false
+
 var resourceToken = uniqueString(subscription().id, resourceGroup().id, location, environmentName)
 var postgresAdminPassword = '${uniqueString(subscription().id, resourceGroup().id, 'pg')}P@1${take(uniqueString(environmentName, 'salt'), 8)}'
 
@@ -207,6 +219,22 @@ resource kvSecretDashboardPassword 'Microsoft.KeyVault/vaults/secrets@2023-07-01
   }
 }
 
+resource kvSecretOauthClientSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (hasIdentity) {
+  parent: keyVault
+  name: 'GITHUB-OAUTH-CLIENT-SECRET'
+  properties: {
+    value: githubOauthClientSecret
+  }
+}
+
+resource kvSecretSessionSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (hasIdentity) {
+  parent: keyVault
+  name: 'SESSION-SECRET'
+  properties: {
+    value: sessionSecret
+  }
+}
+
 // ──────────────────────────────────────────────
 // 12. Container App Environment
 // ──────────────────────────────────────────────
@@ -251,6 +279,21 @@ var dashboardPasswordSecret = hasDashboardPassword
     ]
   : []
 
+var identitySecrets = hasIdentity
+  ? [
+      {
+        name: 'github-oauth-client-secret'
+        keyVaultUrl: kvSecretOauthClientSecret!.properties.secretUri
+        identity: managedIdentity.id
+      }
+      {
+        name: 'session-secret'
+        keyVaultUrl: kvSecretSessionSecret!.properties.secretUri
+        identity: managedIdentity.id
+      }
+    ]
+  : []
+
 var baseEnvVars = [
   {
     name: 'DATABASE_URL'
@@ -275,6 +318,27 @@ var dashboardPasswordEnvVar = hasDashboardPassword
       {
         name: 'DASHBOARD_PASSWORD'
         secretRef: 'dashboard-password'
+      }
+    ]
+  : []
+
+var identityEnvVars = hasIdentity
+  ? [
+      {
+        name: 'GITHUB_OAUTH_CLIENT_ID'
+        value: githubOauthClientId
+      }
+      {
+        name: 'GITHUB_OAUTH_CLIENT_SECRET'
+        secretRef: 'github-oauth-client-secret'
+      }
+      {
+        name: 'SESSION_SECRET'
+        secretRef: 'session-secret'
+      }
+      {
+        name: 'ADMIN_LOGINS'
+        value: adminLogins
       }
     ]
   : []
@@ -310,7 +374,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           identity: managedIdentity.id
         }
       ]
-      secrets: concat(baseSecrets, dashboardPasswordSecret)
+      secrets: concat(baseSecrets, dashboardPasswordSecret, identitySecrets)
     }
     template: {
       containers: [
@@ -321,7 +385,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             cpu: json('0.5')
             memory: '1Gi'
           }
-          env: concat(baseEnvVars, dashboardPasswordEnvVar)
+          env: concat(baseEnvVars, dashboardPasswordEnvVar, identityEnvVars)
         }
       ]
       scale: {

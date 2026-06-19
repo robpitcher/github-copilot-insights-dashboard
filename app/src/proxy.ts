@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const COOKIE_DASHBOARD = "dashboard_session";
 const COOKIE_ADMIN = "admin_session";
+const COOKIE_IDENTITY = "identity_session";
 const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000;
 const SIGNING_SALT = "copilot-insights-session-v1";
 
@@ -115,6 +116,80 @@ async function verifyToken(
   return constantTimeEqual(signature, expectedSignature);
 }
 
+/* ── Identity session verification (Edge-compatible) ── */
+
+type Role = "admin" | "developer";
+
+interface IdentityPayload {
+  login: string;
+  id: number;
+  role: Role;
+}
+
+/**
+ * Identity mode is active only when the GitHub OAuth + session-signing env vars
+ * are all set. When unset, open and shared-password modes are unaffected.
+ */
+function isIdentityModeEnabled(): boolean {
+  return (
+    !!process.env.GITHUB_OAUTH_CLIENT_ID &&
+    !!process.env.GITHUB_OAUTH_CLIENT_SECRET &&
+    !!process.env.SESSION_SECRET
+  );
+}
+
+/**
+ * Verify an identity session token signed with `SESSION_SECRET`.
+ * Returns the decoded payload when valid and unexpired, otherwise null.
+ */
+async function verifyIdentityToken(
+  token: string,
+): Promise<IdentityPayload | null> {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret || !token) return null;
+
+  const dotIdx = token.indexOf(".");
+  if (dotIdx < 0) return null;
+
+  const payloadB64 = token.slice(0, dotIdx);
+  const signature = token.slice(dotIdx + 1);
+  if (!payloadB64 || !signature) return null;
+
+  let payload: string;
+  try {
+    payload = base64UrlDecode(payloadB64);
+  } catch {
+    return null;
+  }
+
+  const key = await deriveKey(secret);
+  const expectedSignature = await hmacSign(key, payload);
+  if (!constantTimeEqual(signature, expectedSignature)) return null;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(payload);
+  } catch {
+    return null;
+  }
+
+  if (typeof parsed !== "object" || parsed === null) return null;
+  const { login, id, role, iat } = parsed as Record<string, unknown>;
+
+  if (
+    typeof login !== "string" ||
+    typeof id !== "number" ||
+    (role !== "admin" && role !== "developer") ||
+    typeof iat !== "number"
+  ) {
+    return null;
+  }
+
+  if (Date.now() - iat > TOKEN_EXPIRY_MS) return null;
+
+  return { login, id, role };
+}
+
 /* ── Proxy handler ── */
 
 export async function proxy(request: NextRequest) {
@@ -132,6 +207,20 @@ export async function proxy(request: NextRequest) {
 
   // Check if this is an admin-level route
   const isAdminRoute = ADMIN_PREFIXES.some((p) => pathname.startsWith(p));
+
+  // Identity mode — when GitHub OAuth is configured, gate by identity session.
+  if (isIdentityModeEnabled()) {
+    const token = request.cookies.get(COOKIE_IDENTITY)?.value;
+    const session = token ? await verifyIdentityToken(token) : null;
+
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (isAdminRoute && session.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    return NextResponse.next();
+  }
 
   if (isAdminRoute) {
     if (!process.env.ADMIN_PASSWORD) return NextResponse.next();
