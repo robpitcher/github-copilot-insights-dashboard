@@ -22,6 +22,7 @@ GitHub Copilot is transforming how teams write code — but without visibility i
 
 | Page | Route | Description |
 |---|---|---|
+| **My Usage** | `/my-usage` | A signed-in developer's **own** AI Credit consumption, broken down by model, with a month selector and trend (identity mode only) |
 | **Copilot Usage** | `/metrics` | Daily/weekly active users, code completions, chat mode breakdown, model & language analytics |
 | **Code Generation** | `/code-generation` | LOC added/deleted by user vs agent, breakdowns by feature, model, and language |
 | **PR & Autofix** | `/pull-requests` | AI-assisted PR creation, Copilot code review suggestions, autofix analytics, and merge metrics |
@@ -188,12 +189,46 @@ Open [http://localhost:3000](http://localhost:3000) and navigate to **Settings**
 | `DATABASE_URL` | Yes | PostgreSQL connection string (e.g. `postgresql://user:pass@host:5432/db`) |
 | `ADMIN_PASSWORD` | No | Password for Settings page access. If unset, settings are open to all. Only leave this unset for local development on a trusted machine |
 | `DASHBOARD_PASSWORD` | No | Password gate for all dashboard pages. If unset, dashboards are open to all. Only leave this unset for local development or intentionally public dashboards |
+| `GITHUB_OAUTH_CLIENT_ID` | No | GitHub OAuth App client id. Enables **identity mode** when set together with the two vars below |
+| `GITHUB_OAUTH_CLIENT_SECRET` | No | GitHub OAuth App client secret (pair with `GITHUB_OAUTH_CLIENT_ID`) |
+| `SESSION_SECRET` | No | Long random string used to HMAC-sign identity session cookies. Required for identity mode |
+| `ADMIN_LOGINS` | No | Comma-separated GitHub logins granted the **admin** role in identity mode (case-insensitive). Everyone else signs in as a **developer** |
 | `NEXT_PUBLIC_BUILD_ID` | No | Git commit SHA shown in sidebar footer (auto-set in Docker) |
 | `NEXT_PUBLIC_BUILD_TIME` | No | Build timestamp shown in sidebar footer (auto-set in Docker) |
 
 > [!WARNING]
 > For any non-local deployment, set `ADMIN_PASSWORD` to protect the **Settings** page. The Settings UI can configure the GitHub token, Enterprise slug, and sync interval. If dashboard pages should not be publicly accessible, also set `DASHBOARD_PASSWORD`. Leaving these unset is only recommended for local development on a trusted machine.
 The **GitHub token**, **Enterprise slug**, and **sync interval** are configured via the Settings UI and stored in the database.
+
+A complete, annotated template of every variable lives in [`app/.env.example`](app/.env.example) — copy it to `app/.env` and fill in the values.
+
+## 🔐 Authentication & Access Modes
+
+The dashboard supports three **additive** authentication modes. They are selected purely by which environment variables are set, so you can adopt them incrementally without code changes:
+
+| Mode | How it's enabled | Who can access what |
+|---|---|---|
+| **Open** | No auth vars set | Everyone sees every page. Use only for local development on a trusted machine |
+| **Shared-password** | `DASHBOARD_PASSWORD` and/or `ADMIN_PASSWORD` set | A single password gates the dashboard (`DASHBOARD_PASSWORD`) and/or the Settings pages (`ADMIN_PASSWORD`). There is no per-user identity |
+| **Identity (GitHub OAuth)** | `GITHUB_OAUTH_CLIENT_ID` **+** `GITHUB_OAUTH_CLIENT_SECRET` **+** `SESSION_SECRET` all set | Each user signs in with GitHub and receives a signed, stateless session cookie carrying their **login** and **role** (`admin` or `developer`, resolved from `ADMIN_LOGINS`) |
+
+In **identity mode**:
+
+- **Developers** see only the **My Usage** page (`/my-usage`) — their own AI Credit consumption, broken down by model, scoped server-side to their signed-in login. Org-wide and cross-user reports (`/ai-credits`, `/seats`, `/users`, etc.) and the Settings pages are hidden from their navigation **and** enforced server-side: a crafted `?user=<other-login>` can never read another user's rows.
+- **Admins** (logins listed in `ADMIN_LOGINS`) see everything, exactly as before.
+
+### GitHub OAuth App setup
+
+1. Create a GitHub **OAuth App** (Settings → Developer settings → OAuth Apps → *New OAuth App*).
+2. Set the **Authorization callback URL** to `https://<your-host>/api/auth/github/callback` (use `http://localhost:3000/api/auth/github/callback` for local development).
+3. Copy the generated **Client ID** and a **Client secret** into `GITHUB_OAUTH_CLIENT_ID` and `GITHUB_OAUTH_CLIENT_SECRET`.
+4. Set `SESSION_SECRET` to a long random string and list your admin GitHub logins in `ADMIN_LOGINS`.
+
+> The OAuth App only reads each user's GitHub identity (login + id) to establish a session — developers never receive billing or enterprise scopes.
+
+### Billing data source & ingestion
+
+AI Credit data is sourced from the validated **async `ai_credit` report export** — `POST /enterprises/{enterprise}/settings/billing/reports` — which returns a download URL once GitHub finishes generating the report. This export requires an **admin enterprise PAT** (classic PAT with `manage_billing:enterprise` read); without that scope GitHub returns `404`. Ingestion is decoupled into a **scheduled Azure Container Apps cron Job** that runs the export, downloads the report, and upserts per-user rows into the database. The dashboard (including **My Usage**) only reads those pre-ingested rows — developers never receive billing scopes and only ever see rows scoped to themselves.
 
 ## 🚢 Deployment
 
