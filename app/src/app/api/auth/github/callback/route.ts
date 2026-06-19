@@ -38,17 +38,40 @@ export async function GET(request: NextRequest) {
     const sp = request.nextUrl.searchParams;
     const code = sp.get("code");
     const state = sp.get("state");
+    const oauthError = sp.get("error");
     const expectedState = request.cookies.get(COOKIE_OAUTH_STATE)?.value;
 
-    if (
-      !code ||
-      !state ||
-      !expectedState ||
-      !safeCompare(state, expectedState)
-    ) {
+    // Validate the CSRF state on every callback, including error returns.
+    if (!state || !expectedState || !safeCompare(state, expectedState)) {
       logAudit({ action: "identity_login_invalid_state", category: "auth", ipAddress: ip });
       const response = NextResponse.json(
         { error: "Invalid OAuth state" },
+        { status: 400 },
+      );
+      clearStateCookie(response);
+      return response;
+    }
+
+    // GitHub returned an error (e.g. the user denied consent) instead of a code.
+    if (oauthError) {
+      logAudit({
+        action: "identity_login_denied",
+        category: "auth",
+        details: { error: oauthError },
+        ipAddress: ip,
+      });
+      const response = NextResponse.json(
+        { error: "GitHub authorization was denied or cancelled" },
+        { status: 401 },
+      );
+      clearStateCookie(response);
+      return response;
+    }
+
+    if (!code) {
+      logAudit({ action: "identity_login_missing_code", category: "auth", ipAddress: ip });
+      const response = NextResponse.json(
+        { error: "Missing authorization code" },
         { status: 400 },
       );
       clearStateCookie(response);
