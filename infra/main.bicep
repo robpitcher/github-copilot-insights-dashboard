@@ -29,6 +29,20 @@ param adminPassword string = ''
 @description('(Optional) Dashboard viewer password. When set, all dashboard pages require this password to view. Separate from the admin password used for Settings. Leave empty for unrestricted viewing.')
 param dashboardPassword string = ''
 
+@description('(Optional) GitHub OAuth App client id. Set together with githubOauthClientSecret and sessionSecret to enable identity mode (GitHub sign-in + roles). Leave empty to keep open/shared-password behavior.')
+param githubOauthClientId string = ''
+
+@secure()
+@description('(Optional) GitHub OAuth App client secret. Required for identity mode. Stored in Key Vault.')
+param githubOauthClientSecret string = ''
+
+@secure()
+@description('(Optional) Secret used to sign identity session cookies. Required for identity mode. Stored in Key Vault.')
+param sessionSecret string = ''
+
+@description('(Optional) Comma-separated GitHub logins granted the admin role (case-insensitive). Used only in identity mode.')
+param adminLogins string = ''
+
 resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   name: resourceGroupName
   location: location
@@ -49,6 +63,11 @@ module resources 'resources.bicep' = {
     adminPassword: adminPassword
     dashboardPassword: dashboardPassword
     hasDashboardPassword: !empty(dashboardPassword)
+    githubOauthClientId: githubOauthClientId
+    githubOauthClientSecret: githubOauthClientSecret
+    sessionSecret: sessionSecret
+    adminLogins: adminLogins
+    hasIdentity: !empty(githubOauthClientId) && !empty(githubOauthClientSecret) && !empty(sessionSecret)
   }
 }
 

@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 
 const COOKIE_DASHBOARD = "dashboard_session";
 const COOKIE_ADMIN = "admin_session";
+const COOKIE_IDENTITY = "identity_session";
 const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
 const SIGNING_SALT = "copilot-insights-session-v1";
 
@@ -205,7 +206,123 @@ export function sessionCookieOptions() {
   };
 }
 
-export const COOKIE_NAMES = { dashboard: COOKIE_DASHBOARD, admin: COOKIE_ADMIN } as const;
+export const COOKIE_NAMES = {
+  dashboard: COOKIE_DASHBOARD,
+  admin: COOKIE_ADMIN,
+  identity: COOKIE_IDENTITY,
+} as const;
+
+/* ── Identity Session (GitHub OAuth, HMAC-signed) ── */
+
+export type Role = "admin" | "developer";
+
+export interface IdentitySession {
+  /** GitHub login (handle). */
+  login: string;
+  /** GitHub numeric user id. */
+  id: number;
+  /** Resolved role for this session. */
+  role: Role;
+}
+
+/**
+ * Identity mode is active only when the GitHub OAuth + session-signing env vars
+ * are all set. When unset, open and shared-password modes are unaffected.
+ */
+export function isIdentityModeEnabled(): boolean {
+  return (
+    !!process.env.GITHUB_OAUTH_CLIENT_ID &&
+    !!process.env.GITHUB_OAUTH_CLIENT_SECRET &&
+    !!process.env.SESSION_SECRET
+  );
+}
+
+/**
+ * Resolve a signed-in user's role from the `ADMIN_LOGINS` allowlist.
+ * Comparison is case-insensitive; anyone not listed defaults to `developer`.
+ */
+export function resolveRole(login: string): Role {
+  const allow = (process.env.ADMIN_LOGINS ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  return allow.includes(login.trim().toLowerCase()) ? "admin" : "developer";
+}
+
+/**
+ * Mint a signed identity session token carrying the user's login, id and role.
+ * Signed with `SESSION_SECRET` using the same HMAC scheme as password sessions.
+ * Returns "" when no signing secret is configured.
+ */
+export function createIdentitySession(session: IdentitySession): string {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) return "";
+
+  const payloadObj = {
+    login: session.login,
+    id: session.id,
+    role: session.role,
+    iat: Date.now(),
+  };
+  const payload = JSON.stringify(payloadObj);
+  const key = getSigningKey(secret);
+  const signature = createHmac("sha256", key).update(payload).digest("hex");
+
+  return `${Buffer.from(payload).toString("base64url")}.${signature}`;
+}
+
+/**
+ * Verify an identity session token. Returns the decoded session when the
+ * signature is valid and the token is not expired, otherwise null.
+ */
+export function verifyIdentitySession(token: string): IdentitySession | null {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret || !token) return null;
+
+  const dotIdx = token.indexOf(".");
+  if (dotIdx < 0) return null;
+
+  const payloadB64 = token.slice(0, dotIdx);
+  const signature = token.slice(dotIdx + 1);
+  if (!payloadB64 || !signature) return null;
+
+  let payload: string;
+  try {
+    payload = Buffer.from(payloadB64, "base64url").toString();
+  } catch {
+    return null;
+  }
+
+  const key = getSigningKey(secret);
+  const expectedSignature = createHmac("sha256", key)
+    .update(payload)
+    .digest("hex");
+
+  if (!safeCompare(signature, expectedSignature)) return null;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(payload);
+  } catch {
+    return null;
+  }
+
+  if (typeof parsed !== "object" || parsed === null) return null;
+  const { login, id, role, iat } = parsed as Record<string, unknown>;
+
+  if (
+    typeof login !== "string" ||
+    typeof id !== "number" ||
+    (role !== "admin" && role !== "developer") ||
+    typeof iat !== "number"
+  ) {
+    return null;
+  }
+
+  if (Date.now() - iat > TOKEN_EXPIRY_MS) return null;
+
+  return { login, id, role };
+}
 
 /* ── Auth Guards ── */
 
