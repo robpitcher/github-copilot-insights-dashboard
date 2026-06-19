@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { factCopilotUsageDaily, dimUser, dimOrg } from "@/lib/db/schema";
-import { sql, and, gte, lte, eq, ilike } from "drizzle-orm";
+import { sql, and, gte, lte, eq } from "drizzle-orm";
 import { daysAgo, isValidDate } from "@/lib/utils";
 import { z } from "zod";
 import { getGitHubConfig } from "@/lib/db/settings";
@@ -56,7 +56,11 @@ export async function GET(request: NextRequest) {
     // retain full cross-user access.
     const session = getIdentitySessionFromRequest(request);
     if (session?.role === "developer") {
-      conditions.push(ilike(factCopilotUsageDaily.userLogin, session.login));
+      // Exact, case-insensitive match (never a LIKE pattern), so a login
+      // containing `_`/`%` can't widen the scope to other users' rows.
+      conditions.push(
+        eq(sql`lower(${factCopilotUsageDaily.userLogin})`, session.login.toLowerCase())
+      );
     }
 
     const users = await db

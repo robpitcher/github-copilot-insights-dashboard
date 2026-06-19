@@ -220,6 +220,13 @@ describe("resolveUserScope (server-side row-level scoping)", () => {
     expect(scope).toEqual({ user: "bob", forced: false });
   });
 
+  it("lowercases the requested user for consistent case-insensitive matching", () => {
+    expect(resolveUserScope({ login: "admin", id: 2, role: "admin" }, "Bob_Dev")).toEqual({
+      user: "bob_dev",
+      forced: false,
+    });
+  });
+
   it("leaves the requested value untouched when there is no identity session", () => {
     expect(resolveUserScope(null, "bob")).toEqual({ user: "bob", forced: false });
     expect(resolveUserScope(null, null)).toEqual({ user: null, forced: false });

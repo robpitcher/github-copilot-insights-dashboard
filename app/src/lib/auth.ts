@@ -354,7 +354,10 @@ export function resolveUserScope(
   if (session && session.role === "developer") {
     return { user: session.login.toLowerCase(), forced: true };
   }
-  return { user: requestedUser ?? null, forced: false };
+  return {
+    user: requestedUser == null ? null : requestedUser.toLowerCase(),
+    forced: false,
+  };
 }
 
 /* ── Auth Guards ── */

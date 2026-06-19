@@ -25,6 +25,7 @@ import {
   type NormalizedAiCreditItem,
 } from "@/lib/db/ai-credit-usage";
 import { getSetting, setSetting, deleteSetting } from "@/lib/db/settings";
+import { randomUUID } from "node:crypto";
 
 const GITHUB_API_BASE = "https://api.github.com";
 const API_VERSION = "2026-03-10";
@@ -383,8 +384,12 @@ async function fetchWindowItems(
     urls = downloadUrls(resource);
 
     if (urls.length === 0 && COMPLETE_STATUSES.has((resource.status ?? resource.state ?? "").toLowerCase())) {
-      console.warn("ai_credit report reported complete but returned no download URLs");
-      break;
+      // A completed report with no download URLs would silently persist nothing
+      // while looking successful — treat it as a hard failure so the scheduler
+      // logs an error and the run can be retried/investigated.
+      throw new Error(
+        `ai_credit report export completed without download URLs for window ${window.start} → ${window.end}`
+      );
     }
   }
 
@@ -430,10 +435,16 @@ async function acquireIngestLock(): Promise<boolean> {
   try {
     const existing = await getSetting(INGEST_LOCK_KEY);
     if (existing) {
-      const ts = Number(existing);
+      const ts = Number(existing.split(":")[0]);
       if (Number.isFinite(ts) && Date.now() - ts < INGEST_LOCK_TTL_MS) return false;
     }
-    await setSetting(INGEST_LOCK_KEY, String(Date.now()));
+    // Write a unique token, then re-read to confirm we still own the lock. If a
+    // racing replica wrote after us, its token wins and we back off. Best-effort
+    // (not atomic) but resistant to the simple read→write race — superseded when
+    // C2 moves ingestion to a single dedicated cron Job.
+    const ownerToken = `${Date.now()}:${randomUUID()}`;
+    await setSetting(INGEST_LOCK_KEY, ownerToken);
+    if ((await getSetting(INGEST_LOCK_KEY)) !== ownerToken) return false;
     inProgress = true;
     return true;
   } catch (err) {

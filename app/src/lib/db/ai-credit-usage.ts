@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "./index";
 import { factAiCreditUsage } from "./schema";
 
@@ -235,15 +235,20 @@ export async function getAiCreditItemsByMonthFromDb(
   const scope = userScope ? userScope.toLowerCase() : null;
 
   try {
+    const conditions = [eq(factAiCreditUsage.enterpriseSlug, enterpriseSlug)];
+    // Enforce the developer row-level scope in SQL so other users' rows are
+    // never read from the DB (defense in depth + less data over the wire).
+    if (scope) {
+      conditions.push(eq(sql`lower(${factAiCreditUsage.userLogin})`, scope));
+    }
     const rows = await db
       .select(itemColumns)
       .from(factAiCreditUsage)
-      .where(eq(factAiCreditUsage.enterpriseSlug, enterpriseSlug));
+      .where(and(...conditions));
 
     for (const row of rows) {
       const key = monthKey(row.periodYear, row.periodMonth);
       if (!wanted.has(key)) continue;
-      if (scope && (row.userLogin ?? "").toLowerCase() !== scope) continue;
       const bucket = result.get(key) ?? [];
       bucket.push(rowToNormalizedItem(row));
       result.set(key, bucket);
