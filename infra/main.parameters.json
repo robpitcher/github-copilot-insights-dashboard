@@ -13,6 +13,18 @@
     },
     "dashboardPassword": {
       "value": "${DASHBOARD_PASSWORD}"
+    },
+    "githubOauthClientId": {
+      "value": "${GITHUB_OAUTH_CLIENT_ID}"
+    },
+    "githubOauthClientSecret": {
+      "value": "${GITHUB_OAUTH_CLIENT_SECRET}"
+    },
+    "sessionSecret": {
+      "value": "${SESSION_SECRET}"
+    },
+    "adminLogins": {
+      "value": "${ADMIN_LOGINS}"
     }
   }
 }

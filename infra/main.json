@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.42.1.51946",
-      "templateHash": "4265432977620426541"
+      "version": "0.43.8.12551",
+      "templateHash": "9860957415455261051"
     }
   },
   "parameters": {
@@ -60,6 +60,34 @@
       "metadata": {
         "description": "(Optional) Dashboard viewer password. When set, all dashboard pages require this password to view. Separate from the admin password used for Settings. Leave empty for unrestricted viewing."
       }
+    },
+    "githubOauthClientId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "(Optional) GitHub OAuth App client id. Set together with githubOauthClientSecret and sessionSecret to enable identity mode (GitHub sign-in + roles). Leave empty to keep open/shared-password behavior."
+      }
+    },
+    "githubOauthClientSecret": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "(Optional) GitHub OAuth App client secret. Required for identity mode. Stored in Key Vault."
+      }
+    },
+    "sessionSecret": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "(Optional) Secret used to sign identity session cookies. Required for identity mode. Stored in Key Vault."
+      }
+    },
+    "adminLogins": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "(Optional) Comma-separated GitHub logins granted the admin role (case-insensitive). Used only in identity mode."
+      }
     }
   },
   "resources": [
@@ -106,6 +134,21 @@
           },
           "hasDashboardPassword": {
             "value": "[not(empty(parameters('dashboardPassword')))]"
+          },
+          "githubOauthClientId": {
+            "value": "[parameters('githubOauthClientId')]"
+          },
+          "githubOauthClientSecret": {
+            "value": "[parameters('githubOauthClientSecret')]"
+          },
+          "sessionSecret": {
+            "value": "[parameters('sessionSecret')]"
+          },
+          "adminLogins": {
+            "value": "[parameters('adminLogins')]"
+          },
+          "hasIdentity": {
+            "value": "[and(and(not(empty(parameters('githubOauthClientId'))), not(empty(parameters('githubOauthClientSecret')))), not(empty(parameters('sessionSecret'))))]"
           }
         },
         "template": {
@@ -114,8 +157,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.42.1.51946",
-              "templateHash": "13603401391942393427"
+              "version": "0.43.8.12551",
+              "templateHash": "18252134873898376296"
             }
           },
           "parameters": {
@@ -146,12 +189,33 @@
             "hasDashboardPassword": {
               "type": "bool",
               "defaultValue": false
+            },
+            "githubOauthClientId": {
+              "type": "string",
+              "defaultValue": ""
+            },
+            "githubOauthClientSecret": {
+              "type": "securestring",
+              "defaultValue": ""
+            },
+            "sessionSecret": {
+              "type": "securestring",
+              "defaultValue": ""
+            },
+            "adminLogins": {
+              "type": "string",
+              "defaultValue": ""
+            },
+            "hasIdentity": {
+              "type": "bool",
+              "defaultValue": false
             }
           },
           "variables": {
             "resourceToken": "[uniqueString(subscription().id, resourceGroup().id, parameters('location'), parameters('environmentName'))]",
             "postgresAdminPassword": "[format('{0}P@1{1}', uniqueString(subscription().id, resourceGroup().id, 'pg'), take(uniqueString(parameters('environmentName'), 'salt'), 8))]",
-            "dashboardPasswordEnvVar": "[if(parameters('hasDashboardPassword'), createArray(createObject('name', 'DASHBOARD_PASSWORD', 'secretRef', 'dashboard-password')), createArray())]"
+            "dashboardPasswordEnvVar": "[if(parameters('hasDashboardPassword'), createArray(createObject('name', 'DASHBOARD_PASSWORD', 'secretRef', 'dashboard-password')), createArray())]",
+            "identityEnvVars": "[if(parameters('hasIdentity'), createArray(createObject('name', 'GITHUB_OAUTH_CLIENT_ID', 'value', parameters('githubOauthClientId')), createObject('name', 'GITHUB_OAUTH_CLIENT_SECRET', 'secretRef', 'github-oauth-client-secret'), createObject('name', 'SESSION_SECRET', 'secretRef', 'session-secret'), createObject('name', 'ADMIN_LOGINS', 'value', parameters('adminLogins'))), createArray())]"
           },
           "resources": [
             {
@@ -341,6 +405,30 @@
               ]
             },
             {
+              "condition": "[parameters('hasIdentity')]",
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', format('azkv{0}', variables('resourceToken')), 'GITHUB-OAUTH-CLIENT-SECRET')]",
+              "properties": {
+                "value": "[parameters('githubOauthClientSecret')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', format('azkv{0}', variables('resourceToken')))]"
+              ]
+            },
+            {
+              "condition": "[parameters('hasIdentity')]",
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', format('azkv{0}', variables('resourceToken')), 'SESSION-SECRET')]",
+              "properties": {
+                "value": "[parameters('sessionSecret')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', format('azkv{0}', variables('resourceToken')))]"
+              ]
+            },
+            {
               "type": "Microsoft.App/managedEnvironments",
               "apiVersion": "2024-03-01",
               "name": "[format('azcae{0}', variables('resourceToken'))]",
@@ -401,7 +489,7 @@
                       "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('azid{0}', variables('resourceToken')))]"
                     }
                   ],
-                  "secrets": "[concat(createArray(createObject('name', 'database-url', 'keyVaultUrl', reference(resourceId('Microsoft.KeyVault/vaults/secrets', format('azkv{0}', variables('resourceToken')), 'DATABASE-URL'), '2023-07-01').secretUri, 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('azid{0}', variables('resourceToken')))), createObject('name', 'admin-password', 'keyVaultUrl', reference(resourceId('Microsoft.KeyVault/vaults/secrets', format('azkv{0}', variables('resourceToken')), 'ADMIN-PASSWORD'), '2023-07-01').secretUri, 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('azid{0}', variables('resourceToken'))))), if(parameters('hasDashboardPassword'), createArray(createObject('name', 'dashboard-password', 'keyVaultUrl', reference(resourceId('Microsoft.KeyVault/vaults/secrets', format('azkv{0}', variables('resourceToken')), 'DASHBOARD-PASSWORD'), '2023-07-01').secretUri, 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('azid{0}', variables('resourceToken'))))), createArray()))]"
+                  "secrets": "[concat(createArray(createObject('name', 'database-url', 'keyVaultUrl', reference(resourceId('Microsoft.KeyVault/vaults/secrets', format('azkv{0}', variables('resourceToken')), 'DATABASE-URL'), '2023-07-01').secretUri, 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('azid{0}', variables('resourceToken')))), createObject('name', 'admin-password', 'keyVaultUrl', reference(resourceId('Microsoft.KeyVault/vaults/secrets', format('azkv{0}', variables('resourceToken')), 'ADMIN-PASSWORD'), '2023-07-01').secretUri, 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('azid{0}', variables('resourceToken'))))), if(parameters('hasDashboardPassword'), createArray(createObject('name', 'dashboard-password', 'keyVaultUrl', reference(resourceId('Microsoft.KeyVault/vaults/secrets', format('azkv{0}', variables('resourceToken')), 'DASHBOARD-PASSWORD'), '2023-07-01').secretUri, 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('azid{0}', variables('resourceToken'))))), createArray()), if(parameters('hasIdentity'), createArray(createObject('name', 'github-oauth-client-secret', 'keyVaultUrl', reference(resourceId('Microsoft.KeyVault/vaults/secrets', format('azkv{0}', variables('resourceToken')), 'GITHUB-OAUTH-CLIENT-SECRET'), '2023-07-01').secretUri, 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('azid{0}', variables('resourceToken')))), createObject('name', 'session-secret', 'keyVaultUrl', reference(resourceId('Microsoft.KeyVault/vaults/secrets', format('azkv{0}', variables('resourceToken')), 'SESSION-SECRET'), '2023-07-01').secretUri, 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('azid{0}', variables('resourceToken'))))), createArray()))]"
                 },
                 "template": {
                   "containers": [
@@ -412,7 +500,7 @@
                         "cpu": "[json('0.5')]",
                         "memory": "1Gi"
                       },
-                      "env": "[concat(createArray(createObject('name', 'DATABASE_URL', 'secretRef', 'database-url'), createObject('name', 'NODE_ENV', 'value', 'production'), createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', reference(resourceId('Microsoft.Insights/components', format('azmon{0}', variables('resourceToken'))), '2020-02-02').ConnectionString), createObject('name', 'ADMIN_PASSWORD', 'secretRef', 'admin-password')), variables('dashboardPasswordEnvVar'))]"
+                      "env": "[concat(createArray(createObject('name', 'DATABASE_URL', 'secretRef', 'database-url'), createObject('name', 'NODE_ENV', 'value', 'production'), createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', reference(resourceId('Microsoft.Insights/components', format('azmon{0}', variables('resourceToken'))), '2020-02-02').ConnectionString), createObject('name', 'ADMIN_PASSWORD', 'secretRef', 'admin-password')), variables('dashboardPasswordEnvVar'), variables('identityEnvVars'))]"
                     }
                   ],
                   "scale": {
@@ -429,6 +517,8 @@
                 "[resourceId('Microsoft.KeyVault/vaults/secrets', format('azkv{0}', variables('resourceToken')), 'ADMIN-PASSWORD')]",
                 "[resourceId('Microsoft.KeyVault/vaults/secrets', format('azkv{0}', variables('resourceToken')), 'DASHBOARD-PASSWORD')]",
                 "[resourceId('Microsoft.KeyVault/vaults/secrets', format('azkv{0}', variables('resourceToken')), 'DATABASE-URL')]",
+                "[resourceId('Microsoft.KeyVault/vaults/secrets', format('azkv{0}', variables('resourceToken')), 'GITHUB-OAUTH-CLIENT-SECRET')]",
+                "[resourceId('Microsoft.KeyVault/vaults/secrets', format('azkv{0}', variables('resourceToken')), 'SESSION-SECRET')]",
                 "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults', format('azkv{0}', variables('resourceToken'))), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.KeyVault/vaults', format('azkv{0}', variables('resourceToken'))), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('azid{0}', variables('resourceToken'))), '4633458b-17de-408a-b874-0445c86b69e6'))]",
                 "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('azid{0}', variables('resourceToken')))]"
               ]
