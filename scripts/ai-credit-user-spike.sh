@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
-# ai-credit-user-spike.sh — reproducible per-user x per-model AI Credit report.
+# ai-credit-user-spike.sh — reproducible per-user × per-model AI Credit report.
 #
 # Demonstrates the spike findings in docs/ai-credit-user-data-spike.md: the
 # enterprise `ai_credit/usage` endpoint does NOT return a per-user dimension by
 # default, but accepts a case-insensitive `user` filter. This script enumerates
-# Copilot seats and queries the endpoint once per user to produce per-user x
+# Copilot seats and queries the endpoint once per user to produce per-user ×
 # per-model rows (credits + USD) for a given month.
 #
 # Requirements:
@@ -54,7 +54,7 @@ mapfile -t logins < <(
 
 echo "# Found ${#logins[@]} seat(s). Querying per-user AI Credit usage..." >&2
 
-# CSV header for the per-user x per-model matrix.
+# CSV header for the per-user × per-model matrix.
 echo "user,model,sku,gross_credits,net_credits,gross_usd,net_usd"
 
 # 2) Query the AI Credit usage report once per user (the `user` filter is the
