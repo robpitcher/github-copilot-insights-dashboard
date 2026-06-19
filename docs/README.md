@@ -7,6 +7,7 @@ Technical documentation for Copilot Insights.
 | Document | Description |
 |---|---|
 | [Architecture](architecture.md) | System overview, component architecture, database schema, infrastructure, and data flow |
+| [AI Credit per-user data spike](ai-credit-user-data-spike.md) | Findings on obtaining per-user × per-model AI Credit consumption: data source, response shape, scopes, and identity join key |
 
 ## Quick Links
 
