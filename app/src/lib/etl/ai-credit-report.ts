@@ -334,6 +334,17 @@ async function fetchWindowItems(
 
   if (!createRes.ok) {
     const body = await createRes.text().catch(() => "");
+    if (createRes.status === 403 || createRes.status === 404) {
+      // The usage report export API enforces enterprise billing access. GitHub
+      // masks a missing scope/role as a 404 (not 403) for billing resources, so
+      // surface the actionable cause instead of a bare status code.
+      throw new Error(
+        `Failed to create ai_credit report: ${createRes.status} ${createRes.statusText}. ` +
+          `This endpoint requires the classic PAT scope 'manage_billing:enterprise' (read) and an ` +
+          `enterprise admin or billing manager role — GitHub returns 404 when the scope or permission ` +
+          `is missing. Update scopes at https://github.com/settings/tokens. Details: ${body}`
+      );
+    }
     throw new Error(
       `Failed to create ai_credit report: ${createRes.status} ${createRes.statusText} ${body}`
     );

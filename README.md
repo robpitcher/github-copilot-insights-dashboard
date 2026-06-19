@@ -155,7 +155,7 @@ See [docs/architecture.md](docs/architecture.md) for detailed architecture docum
 - **Node.js** 24+ and **pnpm** (`corepack enable`)
 - **PostgreSQL** 18+ (local or cloud)
 - **GitHub Enterprise Cloud** with Copilot enabled
-- **GitHub Personal Access Token** with `manage_billing:copilot`, `read:enterprise`, `read:org` scopes
+- **GitHub Personal Access Token** with `manage_billing:copilot`, `manage_billing:enterprise`, `read:enterprise`, `read:org` scopes
 
 ## 🚀 Quick Start
 
@@ -234,7 +234,7 @@ Run the dashboard anywhere you can host a container — your own VM, Kubernetes,
 - **PostgreSQL** 18+ (managed or self-run), reachable from the app
 - **Docker** — the app ships a production `Dockerfile` with Next.js standalone output (or use **Node.js** 24+ and **pnpm** for local development)
 - **TLS / reverse proxy** (e.g. nginx, Caddy) in front of the app for any shared deployment
-- **GitHub Personal Access Token** with `manage_billing:copilot`, `read:enterprise`, `read:org` (added later via the Settings UI)
+- **GitHub Personal Access Token** with `manage_billing:copilot`, `manage_billing:enterprise`, `read:enterprise`, `read:org` (added later via the Settings UI)
 - Environment variables (see [Environment Variables](#environment-variables)):
   - `DATABASE_URL` — **required**
   - `ADMIN_PASSWORD` — **required** for any shared/non-local deployment

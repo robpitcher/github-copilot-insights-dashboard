@@ -287,7 +287,7 @@ Application settings are stored in the `app_settings` database table and managed
 
 | Setting | Description |
 |---|---|
-| GitHub Token | PAT for API access (`manage_billing:copilot`, `read:enterprise`, `read:org`) |
+| GitHub Token | PAT for API access (`manage_billing:copilot`, `manage_billing:enterprise`, `read:enterprise`, `read:org`) |
 | Enterprise Slug | Enterprise identifier for API queries |
 | Sync Scope | Enterprise-wide or org-specific data ingestion |
 | Sync Org Logins | Comma-separated org logins (when scope is org-specific) |
