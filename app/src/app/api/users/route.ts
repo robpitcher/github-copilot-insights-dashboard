@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { factCopilotUsageDaily, dimUser, dimOrg } from "@/lib/db/schema";
-import { sql, and, gte, lte, eq, ilike } from "drizzle-orm";
+import { sql, and, gte, lte, eq } from "drizzle-orm";
 import { daysAgo, isValidDate } from "@/lib/utils";
 import { z } from "zod";
 import { getGitHubConfig } from "@/lib/db/settings";
 import { resolveDisplayNames, formatUserLabel } from "@/lib/github/resolve-display-names";
-import { safeErrorMessage } from "@/lib/auth";
+import { safeErrorMessage, getIdentitySessionFromRequest } from "@/lib/auth";
 
 const querySchema = z.object({
   start: z.string().refine(isValidDate).optional(),
@@ -49,6 +49,18 @@ export async function GET(request: NextRequest) {
 
     if (params.orgId) {
       conditions.push(eq(factCopilotUsageDaily.orgId, params.orgId));
+    }
+
+    // Server-side row-level scoping: a `developer` may only ever read their own
+    // row. Enforced here (not the UI); admins and open/shared-password modes
+    // retain full cross-user access.
+    const session = getIdentitySessionFromRequest(request);
+    if (session?.role === "developer") {
+      // Exact, case-insensitive match (never a LIKE pattern), so a login
+      // containing `_`/`%` can't widen the scope to other users' rows.
+      conditions.push(
+        eq(sql`lower(${factCopilotUsageDaily.userLogin})`, session.login.toLowerCase())
+      );
     }
 
     const users = await db

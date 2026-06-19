@@ -9,6 +9,8 @@ import {
   verifyIdentitySession,
   resolveRole,
   isIdentityModeEnabled,
+  resolveUserScope,
+  getIdentitySessionFromRequest,
 } from "@/lib/auth";
 
 describe("safeCompare", () => {
@@ -201,3 +203,72 @@ describe("identity session mint/verify", () => {
     expect(verifyIdentitySession(token)).toBeNull();
   });
 });
+
+describe("resolveUserScope (server-side row-level scoping)", () => {
+  it("forces a developer to their own login, ignoring a crafted ?user=", () => {
+    const scope = resolveUserScope({ login: "Alice", id: 1, role: "developer" }, "bob");
+    expect(scope).toEqual({ user: "alice", forced: true });
+  });
+
+  it("scopes a developer with no ?user= to their own login", () => {
+    const scope = resolveUserScope({ login: "Alice", id: 1, role: "developer" }, null);
+    expect(scope).toEqual({ user: "alice", forced: true });
+  });
+
+  it("lets an admin keep the requested user (cross-user access)", () => {
+    const scope = resolveUserScope({ login: "admin", id: 2, role: "admin" }, "bob");
+    expect(scope).toEqual({ user: "bob", forced: false });
+  });
+
+  it("lowercases the requested user for consistent case-insensitive matching", () => {
+    expect(resolveUserScope({ login: "admin", id: 2, role: "admin" }, "Bob_Dev")).toEqual({
+      user: "bob_dev",
+      forced: false,
+    });
+  });
+
+  it("leaves the requested value untouched when there is no identity session", () => {
+    expect(resolveUserScope(null, "bob")).toEqual({ user: "bob", forced: false });
+    expect(resolveUserScope(null, null)).toEqual({ user: null, forced: false });
+  });
+});
+
+describe("getIdentitySessionFromRequest", () => {
+  const original = { ...process.env };
+  beforeEach(() => {
+    process.env.GITHUB_OAUTH_CLIENT_ID = "id";
+    process.env.GITHUB_OAUTH_CLIENT_SECRET = "secret";
+    process.env.SESSION_SECRET = "test-session-secret";
+  });
+  afterEach(() => {
+    process.env = { ...original };
+  });
+
+  function requestWithCookie(name: string, value: string): Request {
+    return new Request("https://example.test/api/metrics/ai-credits", {
+      headers: { cookie: `${name}=${value}` },
+    });
+  }
+
+  it("returns the verified session from the identity cookie", () => {
+    const token = createIdentitySession({ login: "alice", id: 1, role: "developer" });
+    const session = getIdentitySessionFromRequest(
+      requestWithCookie("identity_session", token),
+    );
+    expect(session).toEqual({ login: "alice", id: 1, role: "developer" });
+  });
+
+  it("returns null when identity mode is disabled", () => {
+    delete process.env.GITHUB_OAUTH_CLIENT_ID;
+    const token = createIdentitySession({ login: "alice", id: 1, role: "developer" });
+    expect(
+      getIdentitySessionFromRequest(requestWithCookie("identity_session", token)),
+    ).toBeNull();
+  });
+
+  it("returns null when no identity cookie is present", () => {
+    const req = new Request("https://example.test/api/metrics/ai-credits");
+    expect(getIdentitySessionFromRequest(req)).toBeNull();
+  });
+});
+
