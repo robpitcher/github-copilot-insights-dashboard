@@ -179,10 +179,25 @@ These match the scopes already documented in `AGENTS.md` (Required PAT scopes:
 
 ## Reproducible commands
 
-A runnable helper lives at [`scripts/ai-credit-user-spike.sh`](../scripts/ai-credit-user-spike.sh). It
-enumerates seats and prints per-user × per-model rows (credits + USD) for a given month.
+Runnable helpers:
+
+- [`scripts/ai-credit-async-report-spike.ps1`](../scripts/ai-credit-async-report-spike.ps1) creates
+  the async `ai_credit` report export, polls for completion, downloads the CSV, and validates the
+  expected `date`/`username`/`model` billing columns.
+- [`scripts/ai-credit-user-spike.sh`](../scripts/ai-credit-user-spike.sh) enumerates seats and prints
+  per-user × per-model rows (credits + USD) for a given month using the synchronous fallback path.
 
 ### Async all-users month-to-date export (`gh api`)
+
+PowerShell helper:
+
+```powershell
+.\scripts\ai-credit-async-report-spike.ps1 `
+  -Enterprise my-enterprise `
+  -StartDate 2026-06-01 `
+  -EndDate 2026-06-18 `
+  -OutputPath .\ai-credit-mtd.csv
+```
 
 ```bash
 ENTERPRISE="my-enterprise"
