@@ -6,7 +6,7 @@ import { daysAgo, isValidDate } from "@/lib/utils";
 import { z } from "zod";
 import { getGitHubConfig } from "@/lib/db/settings";
 import { resolveDisplayNames, formatUserLabel } from "@/lib/github/resolve-display-names";
-import { safeErrorMessage } from "@/lib/auth";
+import { safeErrorMessage, getIdentitySessionFromRequest } from "@/lib/auth";
 
 const querySchema = z.object({
   start: z.string().refine(isValidDate).optional(),
@@ -49,6 +49,14 @@ export async function GET(request: NextRequest) {
 
     if (params.orgId) {
       conditions.push(eq(factCopilotUsageDaily.orgId, params.orgId));
+    }
+
+    // Server-side row-level scoping: a `developer` may only ever read their own
+    // row. Enforced here (not the UI); admins and open/shared-password modes
+    // retain full cross-user access.
+    const session = getIdentitySessionFromRequest(request);
+    if (session?.role === "developer") {
+      conditions.push(ilike(factCopilotUsageDaily.userLogin, session.login));
     }
 
     const users = await db
