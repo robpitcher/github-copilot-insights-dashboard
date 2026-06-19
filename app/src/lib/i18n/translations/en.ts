@@ -9,6 +9,7 @@ export const en = {
     export: "Export",
     exporting: "Exporting…",
     signOut: "Sign Out",
+    signedInAs: "Signed in as",
     settings: "Settings",
     allUsers: "All users",
     allOrganizations: "All organizations",

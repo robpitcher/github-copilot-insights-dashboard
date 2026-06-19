@@ -11,6 +11,7 @@ export const ar: TranslationKeys = {
     export: "تصدير",
     exporting: "جاري التصدير…",
     signOut: "تسجيل الخروج",
+    signedInAs: "مُسجَّل الدخول باسم",
     settings: "الإعدادات",
     allUsers: "جميع المستخدمين",
     allOrganizations: "جميع المؤسسات",

@@ -11,6 +11,7 @@ export const fr: TranslationKeys = {
     export: "Exporter",
     exporting: "Exportation…",
     signOut: "Déconnexion",
+    signedInAs: "Connecté en tant que",
     settings: "Paramètres",
     allUsers: "Tous les utilisateurs",
     allOrganizations: "Toutes les organisations",

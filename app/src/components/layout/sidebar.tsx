@@ -141,6 +141,22 @@ export function Sidebar() {
         </ul>
       </nav>
       <div className="border-t border-gray-200 px-2 py-3 dark:border-gray-700">
+        {session?.login && (
+          <div
+            className="mb-1.5 flex items-center gap-2.5 px-3 py-1.5"
+            title={`${t("common.signedInAs")}: ${session.login}`}
+          >
+            <UserCircle className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-medium uppercase leading-none tracking-wide text-gray-400 dark:text-gray-500">
+                {t("common.signedInAs")}
+              </p>
+              <p className="mt-0.5 truncate text-sm font-medium text-gray-700 dark:text-gray-200">
+                {session.login}
+              </p>
+            </div>
+          </div>
+        )}
         {!isDeveloper && (
           <Link
             href="/settings"

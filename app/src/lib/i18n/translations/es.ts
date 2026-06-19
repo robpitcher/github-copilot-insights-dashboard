@@ -11,6 +11,7 @@ export const es: TranslationKeys = {
     export: "Exportar",
     exporting: "Exportando…",
     signOut: "Cerrar sesión",
+    signedInAs: "Sesión iniciada como",
     settings: "Configuración",
     allUsers: "Todos los usuarios",
     allOrganizations: "Todas las organizaciones",
