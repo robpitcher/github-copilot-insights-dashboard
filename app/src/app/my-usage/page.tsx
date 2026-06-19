@@ -52,10 +52,10 @@ interface AiCreditData {
   monthlyTrend: MonthlyTrendPoint[];
 }
 
-const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
+// Lower bound supported by /api/metrics/ai-credits (the query schema enforces
+// year >= 2020). Month navigation is clamped to this so the page never requests
+// a period the API rejects.
+const MIN_YEAR = 2020;
 
 const MODEL_COLORS = [
   "#8b5cf6", "#a855f7", "#c084fc", "#d8b4fe", "#7c3aed",
@@ -63,17 +63,9 @@ const MODEL_COLORS = [
   "#3b82f6", "#6366f1", "#14b8a6", "#f59e0b", "#10b981",
 ];
 
-function fmt$(v: number) {
-  return `$${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-function fmtNum(v: number) {
-  return v.toLocaleString("en-US", { maximumFractionDigits: 1 });
-}
-
 export default function MyUsagePage() {
   const { commonOptions: barOpts } = useChartOptions();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -109,6 +101,33 @@ export default function MyUsagePage() {
       .finally(() => setLoading(false));
   }, [year, month]);
 
+  // Locale-aware formatters follow the dashboard language selected via
+  // LocaleProvider (en/ar/es/fr) instead of a hardcoded en-US format.
+  const currencyFmt = useMemo(
+    () =>
+      new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
+    [locale]
+  );
+  const numberFmt = useMemo(
+    () => new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }),
+    [locale]
+  );
+  const fmt$ = (v: number) => currencyFmt.format(v);
+  const fmtNum = (v: number) => numberFmt.format(v);
+
+  const monthLabel = useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(
+        new Date(year, month - 1, 1)
+      ),
+    [locale, year, month]
+  );
+
   const modelBar = useMemo(() => {
     if (!data || data.perModelBreakdown.length === 0) return null;
     const top = data.perModelBreakdown.slice(0, 15);
@@ -143,6 +162,9 @@ export default function MyUsagePage() {
     let y = year;
     if (m < 1) { m = 12; y--; }
     if (m > 12) { m = 1; y++; }
+    // Clamp to the API's supported lower bound so navigation can't request a
+    // year the query schema rejects (which would surface as an error state).
+    if (y < MIN_YEAR) { y = MIN_YEAR; m = 1; }
     setYear(y);
     setMonth(m);
   };
@@ -184,12 +206,13 @@ export default function MyUsagePage() {
       <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={() => goMonth(-1)}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+          disabled={year === MIN_YEAR && month === 1}
+          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
         >
           ← {t("myUsage.prev")}
         </button>
         <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-          {MONTH_NAMES[month - 1]} {year}
+          {monthLabel}
         </span>
         <button
           onClick={() => goMonth(1)}

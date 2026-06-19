@@ -72,6 +72,7 @@ export function Sidebar() {
   const { theme, setTheme } = useTheme();
   const { t, locale, setLocale, locales } = useTranslation();
   const [session, setSession] = useState<SessionInfo | null>(null);
+  const [sessionLoaded, setSessionLoaded] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/session")
@@ -81,7 +82,8 @@ export function Sidebar() {
       })
       .catch(() => {
         // Fail open: keep current (non-gated) behavior if the check fails.
-      });
+      })
+      .finally(() => setSessionLoaded(true));
   }, []);
 
   // Gating only applies in identity mode. A developer sees "My Usage" and no
@@ -113,7 +115,7 @@ export function Sidebar() {
       </Link>
       <nav className="flex-1 overflow-y-auto px-2 py-3">
         <ul className="space-y-0.5">
-          {navItems.map((item) => {
+          {sessionLoaded ? navItems.map((item) => {
             const isActive =
               pathname === item.href ||
               (item.href !== "/" && pathname.startsWith(item.href));
@@ -137,7 +139,11 @@ export function Sidebar() {
                 </Link>
               </li>
             );
-          })}
+          }) : Array.from({ length: 8 }).map((_, i) => (
+            <li key={`nav-skeleton-${i}`} className="px-1 py-1.5">
+              <div className="h-6 animate-pulse rounded-md bg-gray-100 dark:bg-gray-700" />
+            </li>
+          ))}
         </ul>
       </nav>
       <div className="border-t border-gray-200 px-2 py-3 dark:border-gray-700">
@@ -157,7 +163,7 @@ export function Sidebar() {
             </div>
           </div>
         )}
-        {!isDeveloper && (
+        {sessionLoaded && !isDeveloper && (
           <Link
             href="/settings"
             className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
