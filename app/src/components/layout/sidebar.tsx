@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme/theme-provider";
 import { useTranslation } from "@/lib/i18n/locale-provider";
@@ -23,27 +24,46 @@ import {
   Moon,
   Monitor,
   Globe,
+  UserCircle,
 } from "lucide-react";
 import { AgentIcon } from "@/components/icons/agent-icon";
 import { CliIcon } from "@/components/icons/cli-icon";
 
-// Reports are ordered from highest impact (top) to lowest. The deprecated
-// Premium Requests report sits at the bottom, followed by a separator and the
-// Metrics Reference.
+/**
+ * Navigation entries. Flags drive role-based gating in identity mode:
+ *   - `identityOnly`: only shown when identity mode is enabled (e.g. "My Usage",
+ *     which scopes to the signed-in developer's own rows).
+ *   - `orgWide`: a cross-user / org-wide report hidden from developers; admins
+ *     (and open / shared-password modes) keep the current behavior.
+ * Server-side enforcement (issue C1) is the source of truth — this only hides
+ * nav entries that a developer cannot meaningfully use.
+ *
+ * Reports are ordered from highest impact (top) to lowest. The deprecated
+ * Premium Requests report sits at the bottom, followed by a separator and the
+ * Metrics Reference.
+ */
 const NAV_KEYS = [
-  { key: "nav.copilotUsage", href: "/metrics", icon: BarChart3 },
-  { key: "nav.codeGeneration", href: "/code-generation", icon: Code },
-  { key: "nav.pullRequests", href: "/pull-requests", icon: GitPullRequest },
-  { key: "nav.agentImpact", href: "/agents", icon: AgentIcon },
-  { key: "nav.aiAdoption", href: "/ai-adoption", icon: Layers },
-  { key: "nav.cliImpact", href: "/cli", icon: CliIcon },
-  { key: "nav.copilotLicensing", href: "/seats", icon: CreditCard },
-  { key: "nav.aiCredits", href: "/ai-credits", icon: Coins },
-  { key: "nav.usersData", href: "/users", icon: Contact },
-  { key: "nav.enterpriseTeams", href: "/enterprise-teams", icon: Network },
-  { key: "nav.premiumRequests", href: "/premium-requests", icon: Sparkles },
-  { key: "nav.metricsReference", href: "/reference", icon: BookOpen, separatorBefore: true },
+  { key: "nav.myUsage", href: "/my-usage", icon: UserCircle, identityOnly: true },
+  { key: "nav.copilotUsage", href: "/metrics", icon: BarChart3, orgWide: true },
+  { key: "nav.codeGeneration", href: "/code-generation", icon: Code, orgWide: true },
+  { key: "nav.pullRequests", href: "/pull-requests", icon: GitPullRequest, orgWide: true },
+  { key: "nav.agentImpact", href: "/agents", icon: AgentIcon, orgWide: true },
+  { key: "nav.aiAdoption", href: "/ai-adoption", icon: Layers, orgWide: true },
+  { key: "nav.cliImpact", href: "/cli", icon: CliIcon, orgWide: true },
+  { key: "nav.copilotLicensing", href: "/seats", icon: CreditCard, orgWide: true },
+  { key: "nav.aiCredits", href: "/ai-credits", icon: Coins, orgWide: true },
+  { key: "nav.usersData", href: "/users", icon: Contact, orgWide: true },
+  { key: "nav.enterpriseTeams", href: "/enterprise-teams", icon: Network, orgWide: true },
+  { key: "nav.premiumRequests", href: "/premium-requests", icon: Sparkles, orgWide: true },
+  { key: "nav.metricsReference", href: "/reference", icon: BookOpen, orgWide: true, separatorBefore: true },
 ];
+
+interface SessionInfo {
+  identityMode: boolean;
+  authenticated: boolean;
+  login: string | null;
+  role: "admin" | "developer" | null;
+}
 
 const THEME_ICONS = { light: Sun, dark: Moon, system: Monitor } as const;
 
@@ -51,6 +71,29 @@ export function Sidebar() {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const { t, locale, setLocale, locales } = useTranslation();
+  const [session, setSession] = useState<SessionInfo | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then((r) => (r.ok ? (r.json() as Promise<SessionInfo>) : null))
+      .then((data) => {
+        if (data) setSession(data);
+      })
+      .catch(() => {
+        // Fail open: keep current (non-gated) behavior if the check fails.
+      });
+  }, []);
+
+  // Gating only applies in identity mode. A developer sees "My Usage" and no
+  // org-wide reports; admins (and open / shared-password modes) see everything.
+  const isIdentityMode = session?.identityMode === true;
+  const isDeveloper = isIdentityMode && session?.role === "developer";
+
+  const navItems = NAV_KEYS.filter((item) => {
+    if ("identityOnly" in item && item.identityOnly && !isIdentityMode) return false;
+    if ("orgWide" in item && item.orgWide && isDeveloper) return false;
+    return true;
+  });
 
   const cycleTheme = () => {
     const order: Array<"system" | "light" | "dark"> = ["system", "light", "dark"];
@@ -70,7 +113,7 @@ export function Sidebar() {
       </Link>
       <nav className="flex-1 overflow-y-auto px-2 py-3">
         <ul className="space-y-0.5">
-          {NAV_KEYS.map((item) => {
+          {navItems.map((item) => {
             const isActive =
               pathname === item.href ||
               (item.href !== "/" && pathname.startsWith(item.href));
@@ -98,13 +141,15 @@ export function Sidebar() {
         </ul>
       </nav>
       <div className="border-t border-gray-200 px-2 py-3 dark:border-gray-700">
-        <Link
-          href="/settings"
-          className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
-        >
-          <Settings className="h-4 w-4" />
-          {t("common.settings")}
-        </Link>
+        {!isDeveloper && (
+          <Link
+            href="/settings"
+            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+          >
+            <Settings className="h-4 w-4" />
+            {t("common.settings")}
+          </Link>
+        )}
         <button
           type="button"
           onClick={() => {
