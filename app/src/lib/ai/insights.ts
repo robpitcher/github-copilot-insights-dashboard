@@ -9,7 +9,6 @@ import { denyAllExceptCustomTools } from "./tools";
 import { INSIGHT_AGENTS } from "./agents";
 import { resolveMaxReasoningEffort } from "./models";
 import { getMetricSnapshot, type MetricKind, type InsightWindow } from "./insight-data";
-import { splitStructured, type StructuredInsight } from "./structured";
 
 /** UI locale → language name the model should write the analysis in. */
 const LANGUAGE_NAMES: Record<string, string> = {
@@ -29,11 +28,21 @@ const LANGUAGE_NAMES: Record<string, string> = {
  */
 const SDK_RESPONSE_TIMEOUT_MS = 300_000;
 
+export class InsightGenerationAborted extends Error {
+  constructor() {
+    super("AI insight generation aborted");
+    this.name = "InsightGenerationAborted";
+  }
+}
+
+export function isInsightGenerationAborted(error: unknown): boolean {
+  return error instanceof InsightGenerationAborted;
+}
+
 export interface GeneratedInsight {
   content: string;
   cached: boolean;
   data: unknown;
-  structured: StructuredInsight | null;
 }
 
 /**
@@ -54,11 +63,13 @@ export interface InsightStreamHandlers {
 async function runInsight(
   kind: MetricKind,
   w: InsightWindow,
-  opts: { force?: boolean; locale?: string },
+  opts: { force?: boolean; locale?: string; signal?: AbortSignal },
   handlers?: InsightStreamHandlers,
 ): Promise<GeneratedInsight> {
   const locale = opts.locale ?? "en";
+  if (opts.signal?.aborted) throw new InsightGenerationAborted();
   const snapshot = await getMetricSnapshot(kind, w);
+  if (opts.signal?.aborted) throw new InsightGenerationAborted();
   // Language is part of the cache scope so each UI language is cached separately.
   const scopeKey = `${kind}:${w.start}:${w.end}:${w.orgId ?? "all"}:${locale}`;
   const contentHash = createHash("sha256").update(JSON.stringify(snapshot)).digest("hex");
@@ -66,7 +77,7 @@ async function runInsight(
   // A forced refresh skips the cache read and regenerates from scratch.
   if (!opts.force) {
     const cached = await db
-      .select({ content: aiInsights.content, structured: aiInsights.structured })
+      .select({ content: aiInsights.content })
       .from(aiInsights)
       .where(
         and(
@@ -77,12 +88,7 @@ async function runInsight(
       )
       .limit(1);
     if (cached[0]) {
-      return {
-        content: cached[0].content,
-        cached: true,
-        data: snapshot,
-        structured: (cached[0].structured as StructuredInsight | null) ?? null,
-      };
+      return { content: cached[0].content, cached: true, data: snapshot };
     }
   }
 
@@ -116,15 +122,28 @@ async function runInsight(
     onPermissionRequest: denyAllExceptCustomTools,
   });
 
+  const signal = opts.signal;
+  let abortHandler: (() => void) | null = null;
+  const abortPromise = signal
+    ? new Promise<never>((_resolve, reject) => {
+        abortHandler = () => {
+          void session.disconnect().catch(() => {});
+          reject(new InsightGenerationAborted());
+        };
+        signal.addEventListener("abort", abortHandler, { once: true });
+      })
+    : null;
   try {
+    if (signal?.aborted) throw new InsightGenerationAborted();
     const languageName = LANGUAGE_NAMES[locale] ?? "English";
     const prompt =
       `Produce your analysis from this data. Write the entire response — including every ` +
       `section heading — in ${languageName}.\n\nDATA (JSON):\n${JSON.stringify(snapshot)}`;
-    const res = await session.sendAndWait({ prompt }, SDK_RESPONSE_TIMEOUT_MS);
-    const raw = res?.data.content ?? "";
-    // Separate the human prose from the trailing machine-readable JSON block.
-    const { prose, structured } = splitStructured(raw);
+    const responsePromise = session.sendAndWait({ prompt }, SDK_RESPONSE_TIMEOUT_MS);
+    const res = abortPromise
+      ? await Promise.race([responsePromise, abortPromise])
+      : await responsePromise;
+    const content = res?.data.content ?? "";
 
     await db
       .insert(aiInsights)
@@ -134,8 +153,7 @@ async function runInsight(
         contentHash,
         model: model ?? "auto",
         language: locale,
-        content: prose,
-        structured,
+        content,
         windowStart: w.start,
         windowEnd: w.end,
       })
@@ -144,16 +162,18 @@ async function runInsight(
         // the stored narrative and bump the timestamp.
         target: [aiInsights.kind, aiInsights.scopeKey, aiInsights.contentHash],
         set: {
-          content: prose,
-          structured,
+          content,
           model: model ?? "auto",
           language: locale,
           createdAt: new Date(),
         },
       });
 
-    return { content: prose, cached: false, data: snapshot, structured };
+    return { content, cached: false, data: snapshot };
   } finally {
+    if (signal && abortHandler) {
+      signal.removeEventListener("abort", abortHandler);
+    }
     await session.disconnect();
   }
 }
@@ -166,7 +186,7 @@ async function runInsight(
 export function generateInsight(
   kind: MetricKind,
   w: InsightWindow,
-  opts: { force?: boolean; locale?: string } = {},
+  opts: { force?: boolean; locale?: string; signal?: AbortSignal } = {},
 ): Promise<GeneratedInsight> {
   return runInsight(kind, w, opts);
 }
@@ -179,7 +199,7 @@ export function generateInsight(
 export function streamInsight(
   kind: MetricKind,
   w: InsightWindow,
-  opts: { force?: boolean; locale?: string },
+  opts: { force?: boolean; locale?: string; signal?: AbortSignal },
   handlers: InsightStreamHandlers,
 ): Promise<GeneratedInsight> {
   return runInsight(kind, w, opts, handlers);

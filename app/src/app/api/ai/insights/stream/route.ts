@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { isValidDate, daysAgo } from "@/lib/utils";
 import { getAiConfig } from "@/lib/db/ai-settings";
-import { streamInsight } from "@/lib/ai/insights";
+import { isInsightGenerationAborted, streamInsight } from "@/lib/ai/insights";
 
 const bodySchema = z.object({
   kind: z.enum(["cost_license", "adoption", "executive", "delivery", "roi_forecast", "team_scorecards"]),
@@ -42,6 +42,8 @@ export async function POST(request: NextRequest) {
   const start = body.start ?? daysAgo(28);
 
   const encoder = new TextEncoder();
+  const abortController = new AbortController();
+  request.signal.addEventListener("abort", () => abortController.abort(), { once: true });
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const send = (obj: unknown) => {
@@ -55,19 +57,27 @@ export async function POST(request: NextRequest) {
         const result = await streamInsight(
           body.kind,
           { start, end, orgId: body.orgId },
-          { force: body.force, locale: body.locale },
+          { force: body.force, locale: body.locale, signal: abortController.signal },
           {
             onMessage: (text) => send({ type: "message", text }),
             onReasoning: (text) => send({ type: "reasoning", text }),
           },
         );
-        send({ type: "done", content: result.content, cached: result.cached, structured: result.structured });
+        send({ type: "done", content: result.content, cached: result.cached });
       } catch (error) {
+        if (isInsightGenerationAborted(error)) return;
         console.error("AI insights stream failed:", error);
         send({ type: "error" });
       } finally {
-        controller.close();
+        try {
+          controller.close();
+        } catch {
+          /* already closed */
+        }
       }
+    },
+    cancel() {
+      abortController.abort();
     },
   });
 

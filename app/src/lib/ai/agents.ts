@@ -19,21 +19,6 @@ const GROUNDING =
   "Never invent or estimate metrics. Be concise — a short paragraph plus 2-4 bullet points. " +
   "Lead with the most important finding and cite the specific metric behind each statement. " +  "Spell out every abbreviation or acronym the first time you use it, e.g. \"Daily Active Users (DAU)\" or \"lines of code (LOC)\". " +  "Audience: an engineering leader.";
 
-/**
- * Appended to every agent so each narrative also yields machine-readable
- * findings + recommendations that the UI renders as scannable action cards.
- * Best-effort: the server strips and parses this trailing block; when it is
- * missing or malformed the prose still stands on its own.
- */
-const STRUCTURED =
-  "\n\nAfter the prose, append EXACTLY ONE fenced code block tagged `json` and nothing after it, " +
-  "containing a compact object of this shape: " +
-  '{"findings":[{"title":string,"detail":string,"metric":string,"severity":"positive"|"info"|"watch"|"risk"}],' +
-  '"recommendations":[{"action":string,"rationale":string,"expectedImpact":string,"metric":string}]}. ' +
-  "Provide 2-4 findings and 2-4 recommendations. Every \"metric\" must quote a number drawn from the DATA. " +
-  "Write the title/detail/action/rationale/expectedImpact text in the language requested in the user message, " +
-  "but keep the JSON keys and the severity values exactly as shown.";
-
 /** One custom agent per business-value insight kind (items 1-6). */
 export const INSIGHT_AGENTS: Record<MetricKind, CustomAgentDef> = {
   cost_license: {
@@ -44,8 +29,7 @@ export const INSIGHT_AGENTS: Record<MetricKind, CustomAgentDef> = {
       "You are a FinOps-minded analyst for GitHub Copilot spend and licensing. " +
       "Call out idle seats and the spend they represent, the biggest AI-credit spend drivers by model, " +
       "and 2-3 concrete savings actions. " +
-      GROUNDING +
-      STRUCTURED,
+      GROUNDING,
   },
   adoption: {
     name: "adoption-coach",
@@ -55,8 +39,7 @@ export const INSIGHT_AGENTS: Record<MetricKind, CustomAgentDef> = {
       "You are an enablement coach for GitHub Copilot adoption. " +
       "Summarize adoption across the cohorts (no cohort, code-first, agent-first, multi-agent), say where users " +
       "are concentrated, who looks ready to graduate to the next phase, and 2-3 enablement actions. " +
-      GROUNDING +
-      STRUCTURED,
+      GROUNDING,
   },
   executive: {
     name: "executive-briefer",
@@ -99,8 +82,7 @@ export const INSIGHT_AGENTS: Record<MetricKind, CustomAgentDef> = {
       "Spell out every abbreviation or acronym the first time you use it, e.g. \"Daily Active " +
       "Users (DAU)\" or \"lines of code (LOC)\". Be direct and decision-oriented for an engineering leader. " +
       "Write the entire briefing — including every section heading — in the language requested in the " +
-      "user message." +
-      STRUCTURED,
+      "user message.",
   },
   delivery: {
     name: "delivery-analyst",
@@ -110,8 +92,7 @@ export const INSIGHT_AGENTS: Record<MetricKind, CustomAgentDef> = {
       "You are a software delivery analyst. Summarize Copilot's impact on delivery: PR creation/merge/review " +
       "volume, Copilot-authored and reviewed PRs, applied suggestions, and time-to-merge. State the productivity " +
       "signal and one caveat. " +
-      GROUNDING +
-      STRUCTURED,
+      GROUNDING,
   },
   roi_forecast: {
     name: "roi-forecaster",
@@ -131,8 +112,7 @@ export const INSIGHT_AGENTS: Record<MetricKind, CustomAgentDef> = {
       "State every assumption you use, and label every assumption-derived figure as an estimate — never present it " +
       "as a measured metric. Spell out each acronym on first use, e.g. \"return on investment (ROI)\". Be concise and " +
       "decision-oriented for an engineering and finance leader. Write the entire response in the language requested " +
-      "in the user message." +
-      STRUCTURED,
+      "in the user message.",
   },
   team_scorecards: {
     name: "team-scorecard-analyst",
@@ -148,7 +128,6 @@ export const INSIGHT_AGENTS: Record<MetricKind, CustomAgentDef> = {
       "4. **Targeted enablement** — one specific action per segment.\n" +
       "Use ONLY DATA numbers and cite the team name and the metric behind each claim. If no teams are present, say " +
       "enterprise teams must be synced first. Spell out each acronym on first use. Be concise and decision-oriented for " +
-      "an engineering leader. Write the entire response in the language requested in the user message." +
-      STRUCTURED,
+      "an engineering leader. Write the entire response in the language requested in the user message.",
   },
 };

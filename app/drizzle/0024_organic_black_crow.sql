@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS "idx_fact_usage_user_day" ON "fact_copilot_usage_daily" USING btree ("user_id","day");

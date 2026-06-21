@@ -186,6 +186,7 @@ export const factCopilotUsageDaily = pgTable(
     uniqueIndex("idx_fact_usage_unique").on(table.day, table.enterpriseId, table.userId),
     index("idx_fact_usage_day_org").on(table.day, table.orgId),
     index("idx_fact_usage_user_id").on(table.userId),
+    index("idx_fact_usage_user_day").on(table.userId, table.day),
     index("idx_fact_usage_enterprise_id").on(table.enterpriseId),
     index("idx_fact_usage_source_team_github_id").on(table.sourceTeamGithubId),
     index("idx_fact_usage_ai_phase").on(table.day, table.aiAdoptionPhase),

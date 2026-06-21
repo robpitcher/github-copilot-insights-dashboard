@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
-import { RefreshCw, AlertCircle, Sparkles, FlaskConical, ChevronDown, Brain, Copy, Check } from "lucide-react";
+import { RefreshCw, AlertCircle, Sparkles, FlaskConical, ChevronDown, Brain } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/locale-provider";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/components/ui/markdown";
@@ -13,33 +13,6 @@ export type InsightKind =
   | "delivery"
   | "roi_forecast"
   | "team_scorecards";
-
-type TFn = (key: string, ...args: (string | number)[]) => string;
-
-interface InsightFinding {
-  title: string;
-  detail?: string;
-  metric?: string;
-  severity?: "positive" | "info" | "watch" | "risk";
-}
-
-interface InsightRecommendation {
-  action: string;
-  rationale?: string;
-  expectedImpact?: string;
-  metric?: string;
-}
-
-interface StructuredInsight {
-  findings: InsightFinding[];
-  recommendations: InsightRecommendation[];
-}
-
-/** Hide an in-progress trailing ```json fence while the answer streams. */
-function stripJsonTail(s: string): string {
-  const i = s.lastIndexOf("```json");
-  return i >= 0 ? s.slice(0, i).trimEnd() : s;
-}
 
 interface AiStatus {
   enabled: boolean;
@@ -95,7 +68,6 @@ export function InsightPanel({
   const [checking, setChecking] = useState<boolean>(!skipStatusCheck);
   const [open, setOpen] = useState<boolean>(defaultOpen);
   const [content, setContent] = useState<string | null>(null);
-  const [structured, setStructured] = useState<StructuredInsight | null>(null);
   const [reasoning, setReasoning] = useState("");
   const [showReasoning, setShowReasoning] = useState(true);
   const [cached, setCached] = useState(false);
@@ -105,6 +77,8 @@ export function InsightPanel({
   // The window the panel last *attempted* to generate for. Guards the lazy
   // effect so it fires once per window and never loops on error.
   const attemptedKeyRef = useRef<string | null>(null);
+  const activeRequestRef = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
   const windowKey = `${kind}|${start ?? ""}|${end ?? ""}|${orgId ?? ""}|${locale}`;
 
   // Resolve feature availability unless the parent already gated on it.
@@ -133,11 +107,18 @@ export function InsightPanel({
 
   const load = useCallback(
     async (force: boolean) => {
+      abortRef.current?.abort();
+      const requestId = activeRequestRef.current + 1;
+      activeRequestRef.current = requestId;
+      const abortController = new AbortController();
+      abortRef.current = abortController;
+      const isCurrent = () =>
+        activeRequestRef.current === requestId && !abortController.signal.aborted;
+
       attemptedKeyRef.current = windowKey;
       setLoading(true);
       setError(false);
       setContent(null);
-      setStructured(null);
       setReasoning("");
       setShowReasoning(true);
       try {
@@ -145,9 +126,11 @@ export function InsightPanel({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ kind, start, end, orgId, force, locale }),
+          signal: abortController.signal,
         });
+        if (!isCurrent()) return;
         if (!res.ok || !res.body) {
-          setError(true);
+          if (isCurrent()) setError(true);
           return;
         }
         const reader = res.body.getReader();
@@ -162,6 +145,7 @@ export function InsightPanel({
           const frames = buffer.split("\n\n");
           buffer = frames.pop() ?? "";
           for (const frame of frames) {
+            if (!isCurrent()) return;
             const dataLine = frame.split("\n").find((l) => l.startsWith("data:"));
             if (!dataLine) continue;
             let evt: {
@@ -169,7 +153,6 @@ export function InsightPanel({
               text?: string;
               content?: string;
               cached?: boolean;
-              structured?: StructuredInsight | null;
             };
             try {
               evt = JSON.parse(dataLine.slice(5).trim());
@@ -178,24 +161,27 @@ export function InsightPanel({
             }
             if (evt.type === "message" && evt.text) {
               answer += evt.text;
-              setContent(answer);
+              if (isCurrent()) setContent(answer);
             } else if (evt.type === "reasoning" && evt.text) {
               think += evt.text;
-              setReasoning(think);
+              if (isCurrent()) setReasoning(think);
             } else if (evt.type === "done") {
-              if (typeof evt.content === "string") setContent(evt.content);
-              if (evt.structured) setStructured(evt.structured);
-              setCached(Boolean(evt.cached));
-              setShowReasoning(false);
+              if (typeof evt.content === "string" && isCurrent()) setContent(evt.content);
+              if (isCurrent()) setCached(Boolean(evt.cached));
+              if (isCurrent()) setShowReasoning(false);
             } else if (evt.type === "error") {
-              setError(true);
+              if (isCurrent()) setError(true);
             }
           }
         }
-      } catch {
-        setError(true);
+      } catch (err) {
+        if (abortController.signal.aborted) return;
+        if (isCurrent()) setError(true);
       } finally {
-        setLoading(false);
+        if (isCurrent()) {
+          setLoading(false);
+          abortRef.current = null;
+        }
       }
     },
     [kind, start, end, orgId, locale, windowKey],
@@ -312,9 +298,8 @@ export function InsightPanel({
           ) : content ? (
             <>
               <div className="rounded-md bg-white/60 p-3 dark:bg-gray-900/40">
-                <Markdown>{stripJsonTail(content)}</Markdown>
+                <Markdown>{content}</Markdown>
               </div>
-              {structured && <StructuredBlock data={structured} t={t} />}
               <p className="mt-3 flex items-start gap-1.5 border-t border-violet-200/60 pt-2 text-[11px] text-gray-500 dark:border-violet-900/30 dark:text-gray-400">
                 <FlaskConical className="mt-0.5 h-3 w-3 shrink-0 text-amber-500" />
                 {t("aiAnalyst.disclaimer")}
@@ -333,132 +318,5 @@ export function InsightPanel({
         </div>
       )}
     </section>
-  );
-}
-
-const SEVERITY_DOT: Record<string, string> = {
-  positive: "bg-green-500",
-  info: "bg-blue-500",
-  watch: "bg-amber-500",
-  risk: "bg-red-500",
-};
-
-function CopyButton({ text, t }: { text: string; t: TFn }) {
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    navigator.clipboard
-      ?.writeText(text)
-      .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      })
-      .catch(() => {});
-  };
-  return (
-    <button
-      type="button"
-      onClick={copy}
-      title={t("aiAnalyst.copy")}
-      aria-label={t("aiAnalyst.copy")}
-      className="shrink-0 rounded p-1 text-gray-400 hover:bg-white/70 hover:text-gray-600 dark:hover:bg-gray-800/70 dark:hover:text-gray-300"
-    >
-      {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
-    </button>
-  );
-}
-
-/** Renders the machine-readable findings + recommendations as scannable cards. */
-function StructuredBlock({ data, t }: { data: StructuredInsight; t: TFn }) {
-  const [copiedAll, setCopiedAll] = useState(false);
-  const findings = data.findings ?? [];
-  const recommendations = data.recommendations ?? [];
-  if (findings.length === 0 && recommendations.length === 0) return null;
-
-  const copyPlan = () => {
-    const md = recommendations
-      .map((r, i) => `${i + 1}. ${r.action}${r.expectedImpact ? ` — ${r.expectedImpact}` : ""}`)
-      .join("\n");
-    navigator.clipboard
-      ?.writeText(md)
-      .then(() => {
-        setCopiedAll(true);
-        setTimeout(() => setCopiedAll(false), 1500);
-      })
-      .catch(() => {});
-  };
-
-  return (
-    <div className="mt-3 space-y-3">
-      {findings.length > 0 && (
-        <div>
-          <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">
-            {t("aiAnalyst.keyFindings")}
-          </h4>
-          <ul className="space-y-1.5">
-            {findings.map((f, i) => (
-              <li key={i} className="flex items-start gap-2 text-xs text-gray-700 dark:text-gray-300">
-                <span
-                  className={cn(
-                    "mt-1.5 h-2 w-2 shrink-0 rounded-full",
-                    SEVERITY_DOT[f.severity ?? "info"] ?? SEVERITY_DOT.info,
-                  )}
-                />
-                <span className="min-w-0">
-                  <span className="font-medium text-gray-900 dark:text-gray-100">{f.title}</span>
-                  {f.detail ? <span> — {f.detail}</span> : null}
-                  {f.metric ? (
-                    <span className="ms-1 font-medium text-violet-700 dark:text-violet-300">({f.metric})</span>
-                  ) : null}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {recommendations.length > 0 && (
-        <div>
-          <div className="mb-1.5 flex items-center justify-between gap-2">
-            <h4 className="text-[11px] font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">
-              {t("aiAnalyst.recommendations")}
-            </h4>
-            <button
-              type="button"
-              onClick={copyPlan}
-              className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-violet-700 hover:bg-white/70 dark:text-violet-300 dark:hover:bg-gray-800/70"
-            >
-              {copiedAll ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
-              {copiedAll ? t("aiAnalyst.copied") : t("aiAnalyst.copyActionPlan")}
-            </button>
-          </div>
-          <ul className="space-y-1.5">
-            {recommendations.map((r, i) => (
-              <li
-                key={i}
-                className="flex items-start justify-between gap-2 rounded-md border border-violet-200/60 bg-white/50 p-2 dark:border-violet-900/30 dark:bg-gray-900/30"
-              >
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-gray-900 dark:text-gray-100">{r.action}</p>
-                  {(r.expectedImpact || r.metric) && (
-                    <p className="mt-0.5 flex flex-wrap items-center gap-1 text-[11px]">
-                      {r.expectedImpact ? (
-                        <span className="rounded bg-violet-100 px-1.5 py-0.5 font-medium text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">
-                          {t("aiAnalyst.expectedImpact")}: {r.expectedImpact}
-                        </span>
-                      ) : null}
-                      {r.metric ? <span className="text-gray-500 dark:text-gray-400">{r.metric}</span> : null}
-                    </p>
-                  )}
-                </div>
-                <CopyButton
-                  text={`${r.action}${r.expectedImpact ? ` — ${r.expectedImpact}` : ""}`}
-                  t={t}
-                />
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
   );
 }

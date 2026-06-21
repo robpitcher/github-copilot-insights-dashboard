@@ -398,7 +398,35 @@ async function loadRecords(
         aiAdoptionPhase: factRow.aiAdoptionPhase,
         aiAdoptionPhaseVersion: factRow.aiAdoptionPhaseVersion,
       })
-      .onConflictDoNothing();
+      .onConflictDoUpdate({
+        target: [
+          factCopilotUsageDaily.day,
+          factCopilotUsageDaily.enterpriseId,
+          factCopilotUsageDaily.userId,
+        ],
+        set: {
+          userLogin: factRow.userLogin,
+          sourceTeamGithubId: factRow.sourceTeamGithubId,
+          orgId: resolvedOrgId,
+          userInitiatedInteractionCount: factRow.userInitiatedInteractionCount,
+          codeGenerationActivityCount: factRow.codeGenerationActivityCount,
+          codeAcceptanceActivityCount: factRow.codeAcceptanceActivityCount,
+          usedAgent: factRow.usedAgent,
+          usedCopilotCodingAgent: factRow.usedCopilotCodingAgent,
+          usedCopilotCloudAgent: factRow.usedCopilotCloudAgent,
+          usedChat: factRow.usedChat,
+          usedCli: factRow.usedCli,
+          usedCodeReviewActive: factRow.usedCodeReviewActive,
+          usedCodeReviewPassive: factRow.usedCodeReviewPassive,
+          locSuggestedToAddSum: factRow.locSuggestedToAddSum,
+          locSuggestedToDeleteSum: factRow.locSuggestedToDeleteSum,
+          locAddedSum: factRow.locAddedSum,
+          locDeletedSum: factRow.locDeletedSum,
+          aiCreditsUsed: String(factRow.aiCreditsUsed),
+          aiAdoptionPhase: factRow.aiAdoptionPhase,
+          aiAdoptionPhaseVersion: factRow.aiAdoptionPhaseVersion,
+        },
+      });
 
     // Feature facts
     const featureRows = transformToFactFeatures(record);

@@ -1,4 +1,4 @@
-CREATE TABLE "ai_insights" (
+CREATE TABLE IF NOT EXISTS "ai_insights" (
 	"id" bigserial PRIMARY KEY NOT NULL,
 	"kind" varchar(50) NOT NULL,
 	"scope_key" varchar(255) NOT NULL,
@@ -10,5 +10,5 @@ CREATE TABLE "ai_insights" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX "idx_ai_insights_unique" ON "ai_insights" USING btree ("kind","scope_key","content_hash");--> statement-breakpoint
-CREATE INDEX "idx_ai_insights_kind" ON "ai_insights" USING btree ("kind");
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_ai_insights_unique" ON "ai_insights" USING btree ("kind","scope_key","content_hash");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_ai_insights_kind" ON "ai_insights" USING btree ("kind");

@@ -73,7 +73,6 @@ sequenceDiagram
 |---|---|
 | Data gathering (SQL → JSON) | `app/src/lib/ai/insight-data.ts` |
 | Agent personas & prompts | `app/src/lib/ai/agents.ts` |
-| Structured output parser (findings/recommendations) | `app/src/lib/ai/structured.ts` |
 | Generation, caching, streaming | `app/src/lib/ai/insights.ts` |
 | Copilot client (in-process CLI) | `app/src/lib/ai/copilot-client.ts` |
 | Permission guard (deny-all) | `app/src/lib/ai/tools.ts` |
@@ -267,28 +266,6 @@ DATA (JSON):
 `<Language>` is derived from the current UI locale (English, Arabic, Spanish, or French), so the
 analysis is written in the language the user is viewing.
 
-### 4.5 Structured output (findings & recommendations)
-
-Every agent appends **one trailing fenced `json` block** to its prose, in a fixed shape:
-
-```jsonc
-{
-  "findings": [
-    { "title": "…", "detail": "…", "metric": "<a number from the DATA>",
-      "severity": "positive" | "info" | "watch" | "risk" }
-  ],
-  "recommendations": [
-    { "action": "…", "rationale": "…", "expectedImpact": "…", "metric": "<a number from the DATA>" }
-  ]
-}
-```
-
-The server splits the prose from this block (`app/src/lib/ai/structured.ts`), validates it with Zod,
-and stores both. The UI renders the findings as severity-coded bullets and the recommendations as
-cards with **Copy** and **Copy action plan** buttons. Each `metric` must quote a number drawn from
-the DATA — the same grounding rule as the prose. Parsing is **best-effort**: if the block is missing
-or malformed, the prose still stands and no structured cards are shown.
-
 ---
 
 ## 5. How the analysis is produced (execution)
@@ -312,8 +289,7 @@ or malformed, the prose still stands and no structured cards are shown.
   model to finish. The SDK default is 60 seconds, which deep-reasoning (`xhigh`) runs — especially the
   long executive and ROI briefings — routinely exceed; the streaming deltas keep the connection active
   throughout.
-- **Result.** The final message is split into human prose and the trailing structured JSON block
-  (§4.5); both are stored in the cache.
+- **Result.** `session.sendAndWait()` returns the final message, which is stored in the cache.
 
 ---
 
@@ -327,8 +303,7 @@ Narratives are cached in the **`ai_insights`** table (`app/src/lib/db/schema.ts`
 | `scope_key` | `kind:start:end:orgId|all:locale` — window + scope + **language** |
 | `content_hash` | SHA-256 of the snapshot JSON (the grounding data) |
 | `language`, `model` | which language and model produced it |
-| `content` | the generated narrative (Markdown), with the structured block stripped out |
-| `structured` | parsed findings + recommendations (JSONB), rendered as action cards |
+| `content` | the generated narrative (Markdown) |
 | `window_start`, `window_end`, `created_at` | bookkeeping |
 
 - **Cache hit** (matching kind + scope + content hash) returns the stored narrative **instantly, with
