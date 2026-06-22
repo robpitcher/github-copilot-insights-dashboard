@@ -1,12 +1,24 @@
 # 📊 Copilot Insights — Enterprise Analytics for GitHub Copilot
 
-> **Turn GitHub Copilot usage into actionable insight.** Give engineering leaders full visibility into **adoption**, **licensing costs**, **AI credit spend**, and **AI model activity** — across every team and organization, in one self-hostable dashboard.
+> **Turn GitHub Copilot usage into AI-powered executive insight.** The new **AI Analyst** converts your enterprise Copilot data into grounded recommendations, while the dashboard gives engineering leaders full visibility into **adoption**, **licensing costs**, **AI credit spend**, and **AI model activity** across every team and organization.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black)
 ![React](https://img.shields.io/badge/React-19-blue)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-blue)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
+
+## ✨ New in v1.0 — AI Analyst
+
+Copilot Insights now includes an optional **AI Analyst** powered by the GitHub Copilot SDK. It turns your synced Copilot data into structured Markdown briefings for engineering leaders, covering **cost and license optimization**, **adoption coaching**, **executive summaries**, **delivery impact**, **ROI and spend forecasts**, and **team scorecards**.
+
+The AI Analyst is designed for transparency and governance:
+
+- 🧠 **Grounded analysis** — every narrative is generated from dashboard metrics, enterprise context, org topology, feature mix, and persisted access/seat signals
+- 📊 **Business-ready output** — structured Markdown with key metrics, risks, recommended actions, caveats, and analysis confidence
+- 🏢 **Enterprise personalization** — admins can provide additional instructions and assumptions, such as hourly cost, priority teams, and reporting preferences
+- 🔒 **Operational control** — AI is off by default, uses a dedicated Copilot token, caches generated insights, and includes a cache management panel
+- 🔍 **Transparency report** — see [docs/ai-analyst.md](docs/ai-analyst.md) for what data is sent, prompt structure, cache behavior, and security model
 
 ## 💡 Why Copilot Insights?
 
@@ -15,6 +27,7 @@ GitHub Copilot is transforming how teams write code — but without visibility i
 - 📈 **Adoption tracking** — see which teams and users are actively using Copilot, and where adoption lags
 - 💰 **License optimization** — identify unused seats and potential savings across your enterprise
 - 🤖 **Model intelligence** — understand which AI models drive the most value and how AI credit budgets are consumed
+- 🧠 **AI-powered analyst briefings** — convert raw metrics into executive, cost, adoption, delivery, ROI, and team recommendations
 - ⚡ **Productivity metrics** — measure code completions, agent usage, PR impact, and CLI adoption in one place
 - 🔒 **Enterprise governance** — role-based access, audit logging, and team-level filtering for compliance
 
@@ -22,6 +35,7 @@ GitHub Copilot is transforming how teams write code — but without visibility i
 
 | Page | Route | Description |
 |---|---|---|
+| **AI Analyst** | `/ai-analyst` | AI-generated executive, cost, adoption, delivery, ROI, and team analysis grounded in synced dashboard data |
 | **Copilot Usage** | `/metrics` | Daily/weekly active users, code completions, chat mode breakdown, model & language analytics |
 | **Code Generation** | `/code-generation` | LOC added/deleted by user vs agent, breakdowns by feature, model, and language |
 | **PR & Autofix** | `/pull-requests` | AI-assisted PR creation, Copilot code review suggestions, autofix analytics, and merge metrics |
@@ -38,10 +52,11 @@ GitHub Copilot is transforming how teams write code — but without visibility i
 
 ### ✨ Cross-cutting Features
 
-- 🌍 **Internationalization** — 4 languages (English, Arabic RTL, Spanish, French) via `useTranslation()` hook
+- 🌍 **Internationalization** — 7 languages (English, Arabic RTL, Spanish, French, German, Hindi, Italian) via `useTranslation()` hook
 - 🌓 **Dark/Light/System theme** — three-mode theme with `dark:` Tailwind variants and theme-aware Chart.js options
 - 📄 **PDF export** — one-click PDF generation for all dashboard pages
 - 🔎 **Multi-select filters** — filter charts by organization, enterprise team, user, model, or language
+- 🧠 **AI Analyst** — optional Copilot SDK-powered analysis with grounded prompts, Markdown output, caching, admin assumptions, and enterprise context
 - 🚩 **Configuration banner** — shown when GitHub token or enterprise slug is missing
 - ℹ️ **About report context** — each report includes an “About this report” banner with metric scope/context
 - 📝 **Audit logging** — tracks admin actions for compliance
@@ -54,6 +69,12 @@ GitHub Copilot is transforming how teams write code — but without visibility i
 Welcome page with feature overview cards and quick navigation to all dashboards.
 
 ![Landing Page](docs/screenshots/landing.png)
+
+### AI Analyst
+
+AI-generated executive, ROI, and team scorecard analysis with grounded Markdown summaries and collapsible cards.
+
+![AI Analyst](docs/screenshots/ai-analyst.png)
 
 ### Copilot Usage
 
@@ -132,6 +153,12 @@ Enterprise team management with member sync from GitHub Enterprise Teams API.
 Manage your GitHub connection and enterprise slug.
 
 ![Settings](docs/screenshots/settings.png)
+
+### Settings — AI Analyst
+
+Configure the AI Analyst token, model, admin assumptions, enterprise context status, and cached insight management.
+
+![AI Analyst Settings](docs/screenshots/settings-ai-analyst.png)
 
 ### Settings — Data Sync
 

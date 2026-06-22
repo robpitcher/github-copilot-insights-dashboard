@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Sparkles, Loader2, AlertCircle, BarChart3, TrendingUp, Users } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/locale-provider";
 import { PageHeader } from "@/components/layout/page-header";
-import { InsightPanel } from "@/components/ai/insight-panel";
+import { AiInsightPanel } from "@/components/ai/insight-panel";
 
 interface AiStatus {
   enabled: boolean;
@@ -64,24 +64,27 @@ export default function AiAnalystPage() {
     <div className="space-y-6">
       <PageHeader title={t("aiAnalyst.title")} subtitle={t("aiAnalyst.subtitle")} />
 
-      <InsightPanel
+      <AiInsightPanel
         kind="executive"
         title={t("aiAnalyst.executive")}
+        description={t("aiAnalyst.executiveDesc")}
         icon={BarChart3}
         skipStatusCheck
         defaultOpen
       />
 
-      <InsightPanel
+      <AiInsightPanel
         kind="roi_forecast"
         title={t("aiAnalyst.roiForecast")}
+        description={t("aiAnalyst.roiForecastDesc")}
         icon={TrendingUp}
         skipStatusCheck
       />
 
-      <InsightPanel
+      <AiInsightPanel
         kind="team_scorecards"
         title={t("aiAnalyst.teamScorecards")}
+        description={t("aiAnalyst.teamScorecardsDesc")}
         icon={Users}
         skipStatusCheck
       />

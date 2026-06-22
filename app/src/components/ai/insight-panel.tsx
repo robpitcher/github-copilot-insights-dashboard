@@ -19,9 +19,11 @@ interface AiStatus {
   configured: boolean;
 }
 
-export interface InsightPanelProps {
+export interface AiInsightPanelProps {
   kind: InsightKind;
   title: string;
+  /** Short summary shown in the collapsed card header. */
+  description?: string;
   /** Topic icon shown in the gradient avatar. Defaults to Sparkles. */
   icon?: ComponentType<{ className?: string }>;
   /** Window start (YYYY-MM-DD). Omit to let the server default to the last 28 days. */
@@ -52,9 +54,10 @@ export interface InsightPanelProps {
  * did) and renders nothing when off, so it can be dropped onto any report page
  * without guarding the call site. Refresh forces a cache-bypassing run.
  */
-export function InsightPanel({
+export function AiInsightPanel({
   kind,
   title,
+  description,
   icon: Icon = Sparkles,
   start,
   end,
@@ -62,7 +65,7 @@ export function InsightPanel({
   skipStatusCheck,
   defaultOpen = false,
   className,
-}: InsightPanelProps) {
+}: AiInsightPanelProps) {
   const { t, locale } = useTranslation();
   const [available, setAvailable] = useState<boolean>(skipStatusCheck ?? false);
   const [checking, setChecking] = useState<boolean>(!skipStatusCheck);
@@ -211,34 +214,41 @@ export function InsightPanel({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label={open ? t("aiAnalyst.hideAnalysis") : t("aiAnalyst.showAnalysis")}
-        className="flex w-full items-center justify-between gap-3 px-5 py-3 text-start"
+        className="group flex w-full items-start justify-between gap-4 px-5 py-4 text-start transition-colors hover:bg-white/40 dark:hover:bg-white/5"
       >
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-linear-to-br from-violet-500 to-blue-500 text-white">
-            <Icon className="h-4 w-4" />
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-violet-500 to-blue-500 text-white shadow-sm shadow-violet-500/20">
+            <Icon className="h-5 w-5" />
           </span>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
+              <h3 className="min-w-0 text-sm font-semibold text-gray-900 dark:text-gray-100">
                 {title}
               </h3>
-              <span
-                title={t("aiAnalyst.experimentalTooltip")}
-                className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
-              >
-                <FlaskConical className="h-3 w-3" />
-                {t("aiAnalyst.experimental")}
-              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">
+                  <Sparkles className="h-3 w-3" />
+                  {t("aiAnalyst.aiGenerated")}
+                </span>
+                <span
+                  title={t("aiAnalyst.experimentalTooltip")}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                >
+                  <FlaskConical className="h-3 w-3" />
+                  {t("aiAnalyst.experimental")}
+                </span>
+              </div>
             </div>
-            <p className="flex items-center gap-1 text-[11px] text-violet-700/80 dark:text-violet-300/80">
-              <Sparkles className="h-3 w-3" />
-              {t("aiAnalyst.aiGenerated")}
-            </p>
+            {description && (
+              <p className="max-w-4xl text-balance text-xs leading-relaxed text-gray-600 dark:text-gray-400">
+                {description}
+              </p>
+            )}
           </div>
         </div>
         <ChevronDown
           className={cn(
-            "h-4 w-4 shrink-0 text-gray-400 transition-transform",
+            "mt-3 h-4 w-4 shrink-0 text-gray-400 transition-transform group-hover:text-violet-500",
             open && "rotate-180",
           )}
         />

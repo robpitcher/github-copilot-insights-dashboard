@@ -81,6 +81,9 @@ sequenceDiagram
 | Non-streaming endpoint | `app/src/app/api/ai/insights/route.ts` |
 | Feature status | `app/src/app/api/ai/status/route.ts` |
 | Settings (token, model, on/off) | `app/src/app/api/settings/ai-analyst/route.ts` |
+| AI cache status / clear | `app/src/app/api/settings/ai-analyst/cache/route.ts` |
+| Enterprise context status | `app/src/app/api/settings/ai-analyst/context/route.ts` |
+| Metric display-name glossary | `app/src/lib/ai/metric-glossary.ts` |
 | UI card + reasoning trace | `app/src/components/ai/insight-panel.tsx` |
 | Cache table schema | `app/src/lib/db/schema.ts` (`ai_insights`) |
 
@@ -89,20 +92,42 @@ sequenceDiagram
 ## 3. What data is gathered (and what is **not**)
 
 There are six "insight kinds." Each has a dedicated builder in `insight-data.ts` that returns a
-small, JSON-serializable object of **aggregates**. The builders read only these tables:
-`fact_copilot_usage_daily`, `fact_ai_credit_usage`, `fact_org_aggregate_daily`, `dim_user`, and —
-for team scorecards — `dim_enterprise_team` and `dim_enterprise_team_member`.
+small, JSON-serializable object of **aggregates**. The builders read these persisted tables:
+`fact_copilot_usage_daily`, `fact_ai_credit_usage`, `fact_org_aggregate_daily`, `fact_user_language_daily`,
+`fact_user_ide_daily`, `fact_user_model_daily`, `dim_user`, `dim_org`, `dim_org_member`,
+`dim_enterprise`, `dim_enterprise_team`, `dim_enterprise_team_member`, `fact_copilot_seat_assignment`,
+and `github_access_check_snapshot`.
 
 > **No personal data is sent to the model.** User IDs are used only inside SQL for
 > `COUNT(DISTINCT …)` and cohort/team grouping. They are **never included** in the JSON payload. No
 > user logins, names, emails, repository names, or code are sent to the model — only counts, sums,
-> averages, rates, and model names.
+> averages, rates, model names, organization names, and enterprise team names.
 >
-> **Two clarifications for the newer kinds:** the **team scorecards** payload includes enterprise
-> **team names** (e.g. "Platform") alongside their aggregates — these are organizational labels, not
-> user identities. The **ROI & forecast** payload includes a small block of clearly-labeled, editable
-> **assumption constants** (e.g. minutes saved per accepted suggestion) so any ROI figure is a
-> transparent, reproducible estimate rather than an invented number.
+> **Clarifications for newer context:** team scorecards include enterprise **team names** and
+> enterprise context includes **organization names**; these are organizational labels, not user
+> identities. The **ROI & forecast** payload includes clearly-labeled **assumption constants** and can
+> also include admin-provided additional assumptions. Any assumption-derived ROI figure must be
+> labeled as an estimate.
+
+### 3.0 Shared enterprise context included with every snapshot
+
+Every insight payload now includes `enterpriseContext`, a compact, persisted snapshot of the
+enterprise shape and data health:
+
+| Group | Meaning | Source |
+|---|---|---|
+| `enterprise` | configured enterprise slug + stored enterprise rows | `app_settings`, `dim_enterprise` |
+| `topology` | org count, synced team count, synced team-member count, licensed users, active users, utilization | dimensions + usage facts |
+| `orgScorecards[]` | per-org member count, active users, interactions, AI Credits used, and efficiency ratios | `dim_org`, `dim_org_member`, `dim_user`, `fact_copilot_usage_daily` |
+| `seatAssignmentSignals` | persisted seat assignment snapshot date, plan counts, assignment method counts, idle/never-active/pending-cancellation counts when available | `fact_copilot_seat_assignment` |
+| `accessHealth` | latest Check access result, token health, failed endpoint checks | `github_access_check_snapshot` |
+| `featureMix` | chat / CLI / agent / code-review adoption, plus top languages, editors, and models | usage facts + language/IDE/model facts |
+| `contextWarnings[]` | missing org/team/seat/access context warnings | derived |
+
+Seat assignment details are **not fetched live during AI generation**. They are persisted when the
+seats page or data sync calls the live GitHub seats API. If the seats endpoint is unavailable (for
+example, GitHub returns 404 for the configured enterprise/token), the sync continues and the AI
+payload marks seat assignment context as unavailable rather than inventing it.
 
 The window comes from the report's date-range filter (or defaults to the last 28 days). An optional
 single `orgId` scopes usage-based metrics.
@@ -116,6 +141,8 @@ single `orgId` scopes usage-based metrics.
 | `idleSeats` | `licensedUsers − activeUsers` | derived |
 | `totalNetSpend` | Net AI-credit spend in window | `SUM(net_amount)` of `fact_ai_credit_usage` |
 | `spendByModel` | Top 10 models by net spend (`model`, `netAmount`) | grouped by `model` |
+| `businessSignals` | license risk, spend concentration risk, and primary savings opportunity | derived |
+| `dataQuality` | sample size, evidence completeness, readiness rationale, warnings | derived |
 
 ### 3.2 `adoption` — Adoption Coach
 
@@ -123,6 +150,9 @@ single `orgId` scopes usage-based metrics.
 |---|---|
 | `totalClassifiedUsers` | Users with a latest adoption phase in window |
 | `cohorts[]` | Per phase (no cohort, code-first, agent-first, multi-agent): `users` count |
+| `stageMix` | early/no-cohort users, advanced users, share percentages |
+| `businessSignals` | dominant cohort, maturity, primary enablement focus |
+| `dataQuality` | sample size, evidence completeness, warnings |
 
 Each user is bucketed by their **latest** `ai_adoption_phase` within the window
 (`SELECT DISTINCT ON (user_id) … ORDER BY day DESC`).
@@ -142,6 +172,8 @@ comparison and an **in-window weekly trajectory**, so the briefer can describe *
 | `delivery` | prCreated/merged/reviewed (+ % changes), copilotAuthoredPrs, copilotReviewedPrs, copilotAppliedSuggestions, avgMedianMinutesToMerge |
 | `adoption` | totalClassifiedUsers + cohort counts |
 | `weeklyTrend[]` | per ISO week: activeUsers, interactions |
+| `businessSignals` | activity, productivity, spend, and delivery trend labels; adoption maturity; top risk; recommended executive decision |
+| `dataQuality` | sample size, evidence completeness, warnings |
 
 A representative (numbers illustrative) executive payload:
 
@@ -168,7 +200,8 @@ A representative (numbers illustrative) executive payload:
 
 Pull-request throughput at **enterprise scope** from `fact_org_aggregate_daily`: `prCreated`,
 `prMerged`, `prReviewed`, `copilotAuthoredPrs`, `copilotReviewedPrs`, `copilotSuggestions`,
-`copilotAppliedSuggestions`, `avgMedianMinutesToMerge`.
+`copilotAppliedSuggestions`, `avgMedianMinutesToMerge`, plus Copilot-authored/reviewed shares,
+suggestion application rate, previous-period movement, delivery signal, and data caveats.
 
 ### 3.5 `roi_forecast` — ROI & Forecast Analyst
 
@@ -182,6 +215,9 @@ model can compute a **transparent ROI estimate** without inventing measured numb
 | `licensing` | licensedUsers, activeUsers, idleSeats, utilizationPct |
 | `cost` | netSpend (+ previous + % change), avgDailyNetSpend, projected30DaySpend, projectedAnnualSpend, weeklyNetSpend[] |
 | `assumptions` | minutesSavedPerAcceptedSuggestion (1.5), developerHourlyCostUsd (75), monthlyCostPerSeatUsd (19), and a note |
+| `computedEstimates` | estimated hours saved, estimated value, fully loaded cost, net value, ROI ratio, break-even hours, idle-seat cost |
+| `businessSignals` | ROI judgment, spend trend, forecast risk, primary action |
+| `dataQuality` | sample size, evidence completeness, warnings |
 
 The forecast figures are simple, auditable run-rate projections (average daily net spend × 30 / 365).
 The assumptions are **defaults you can change** — every ROI number the model states is derived from
@@ -200,6 +236,9 @@ consumption are attributed to each **enterprise team** via its roster
 | `agentAdopters` | distinct members who used an agent (`used_agent`) |
 | `creditsUsed` | `SUM(ai_credits_used)` over the team's members (Copilot Usage Metrics signal) |
 | `interactions`, `acceptanceRate` | activity volume and accepted ÷ generated |
+| `creditsPerActiveMember`, `creditsPerInteraction` | cost-efficiency ratios |
+| `segment`, `benchmark` | leader / cost watch / underutilized / enablement candidate + median comparisons |
+| `businessSignals`, `benchmarks`, `dataQuality` | leading/cost-watch/underutilized teams, medians, evidence caveats |
 
 Empty when no enterprise teams have been synced (the agent then says teams must be synced first).
 
@@ -213,14 +252,23 @@ DATA JSON).
 
 ### 4.1 Shared grounding rules
 
-Three of the agents (cost, adoption, delivery) append this shared block (`GROUNDING` in
-`app/src/lib/ai/agents.ts`):
+All agents share an expanded grounding and output contract (`app/src/lib/ai/agents.ts`):
 
-> Write your entire response in the language requested in the user message. Use ONLY the numbers in
-> the DATA provided in the user message. Never invent or estimate metrics. Be concise — a short
-> paragraph plus 2-4 bullet points. Lead with the most important finding and cite the specific
-> metric behind each statement. Spell out every abbreviation or acronym the first time you use it,
-> e.g. "Daily Active Users (DAU)" or "lines of code (LOC)". Audience: an engineering leader.
+- write in the requested UI language;
+- use only numbers present in `DATA`;
+- distinguish **measured**, **derived**, and **assumption-based estimate** values;
+- use `businessSignals`, `computedEstimates`, `benchmarks`, and `dataQuality` as interpretation cues;
+- use `enterpriseContext` to personalize recommendations to orgs, teams, seat assignment context,
+  access health, and feature mix;
+- use the **metric glossary** to show friendly metric names instead of raw JSON keys like
+  `licensedUsers` or `codeReviewSharePct`;
+- avoid raw JSON, code fences, implementation details, and salesy language;
+- produce structured Markdown with a key metrics section, risks, recommendations, and
+  **analysis confidence**.
+
+Important distinction: `dataQuality.evidenceCompletenessPct` is **not** a confidence score. It is a
+data-readiness signal. The model is asked to produce its own **analysis confidence** (High/Medium/Low
+plus 0-100%) based on signal consistency, ambiguity, alternative explanations, and caveats.
 
 ### 4.2 Agent personas
 
@@ -232,6 +280,9 @@ Three of the agents (cost, adoption, delivery) append this shared block (`GROUND
 | `executive-briefer` | Comprehensive strategic briefing (see below) |
 | `roi-forecaster` | "FinOps and value-realization analyst … quantify value and forecast spend, and show the math: value realized, fully-loaded cost, an ROI judgment, a run-rate forecast, and 2-3 actions — every assumption stated and labeled as an estimate." |
 | `team-scorecard-analyst` | "Enablement strategist … compare per-team scorecards: leading teams to replicate, lagging teams and why, cost-vs-value outliers, and targeted enablement per segment." |
+
+All personas also inherit metric-language guardrails and enterprise-context guidance. The prompt
+version is exported as `AI_ANALYST_PROMPT_VERSION`; changing it invalidates old cached narratives.
 
 ### 4.3 The executive briefer prompt (verbatim intent)
 
@@ -259,12 +310,20 @@ Built in `app/src/lib/ai/insights.ts`:
 Produce your analysis from this data. Write the entire response — including every section heading —
 in <Language>.
 
+ADMIN-PROVIDED ADDITIONAL INSTRUCTIONS / ASSUMPTIONS:
+<optional admin text>
+
+METRIC GLOSSARY (raw field name → display name):
+<friendly metric labels>
+
 DATA (JSON):
 <the snapshot object from §3>
 ```
 
-`<Language>` is derived from the current UI locale (English, Arabic, Spanish, or French), so the
-analysis is written in the language the user is viewing.
+`<Language>` is derived from the current UI locale: English, Arabic, Spanish, French, German, Hindi,
+or Italian. The optional admin block comes from **Settings → AI Analyst → Additional instructions &
+assumptions** and is treated as enterprise context only when it does not conflict with the grounding
+rules or measured `DATA`.
 
 ---
 
@@ -283,8 +342,8 @@ analysis is written in the language the user is viewing.
 - **Streaming.** When the UI requests it, the session enables `streaming: true` and
   `reasoningSummary: "detailed"`. The model emits `assistant.message_delta` (the answer) and
   `assistant.reasoning_delta` (the thinking trace), which the route relays to the browser over
-  **Server-Sent Events**. The reasoning trace is shown in a collapsible "Thinking…" panel and is
-  **ephemeral** — it is not persisted.
+  **Server-Sent Events**. The reasoning trace is shown in a collapsible Markdown-enabled
+  "Thinking…" panel and is **ephemeral** — it is not persisted.
 - **Response timeout.** `session.sendAndWait(prompt, 300000)` waits up to **5 minutes** for the
   model to finish. The SDK default is 60 seconds, which deep-reasoning (`xhigh`) runs — especially the
   long executive and ROI briefings — routinely exceed; the streaming deltas keep the connection active
@@ -300,19 +359,22 @@ Narratives are cached in the **`ai_insights`** table (`app/src/lib/db/schema.ts`
 | Column | Purpose |
 |---|---|
 | `kind` | insight kind |
-| `scope_key` | `kind:start:end:orgId|all:locale` — window + scope + **language** |
-| `content_hash` | SHA-256 of the snapshot JSON (the grounding data) |
+| `scope_key` | `promptVersion:kind:start:end:orgId|all:locale` — prompt version + window + scope + **language** |
+| `content_hash` | SHA-256 of the snapshot JSON plus admin-provided additional instructions |
 | `language`, `model` | which language and model produced it |
 | `content` | the generated narrative (Markdown) |
 | `window_start`, `window_end`, `created_at` | bookkeeping |
 
 - **Cache hit** (matching kind + scope + content hash) returns the stored narrative **instantly, with
   no model call** — so revisiting a window costs nothing.
-- A new window, a new language, **changed underlying numbers** (new hash), or an explicit **Refresh**
-  triggers a fresh generation. Refresh bypasses the cache read and overwrites the row.
+- A new window, a new language, prompt-version change, changed underlying numbers, changed admin
+  assumptions (new hash), or an explicit **Refresh** triggers a fresh generation. Refresh bypasses
+  the cache read and overwrites the row.
 - **Each generation = one GitHub Copilot premium request**, billed to the configured token's seat.
 - The panels are **collapsed by default and generate lazily** — the model is only called when a user
   expands a card (the dedicated AI hub auto-opens its executive card). This keeps spend opt-in.
+- **Cache management.** Settings → AI Analyst shows cached record count and last generation time and
+  includes a **Clear cache** action. The API is `app/src/app/api/settings/ai-analyst/cache/route.ts`.
 
 ---
 
@@ -324,9 +386,9 @@ Narratives are cached in the **`ai_insights`** table (`app/src/lib/db/schema.ts`
 - **Token type.** A fine-grained PAT (`github_pat_`) with the **Copilot Requests** account permission,
   or a `gho_`/`ghu_` OAuth token, from a Copilot-licensed account. Classic `ghp_` tokens are
   rejected. The token is verified with a tiny live call when saved.
-- **What leaves your infrastructure.** Only the aggregated snapshot JSON (§3) is sent to the
-  GitHub-hosted Copilot model, via your own Copilot entitlement. No source code, no user identities,
-  no repository contents.
+- **What leaves your infrastructure.** The aggregated snapshot JSON (§3), metric glossary, and any
+  admin-provided additional instructions are sent to the GitHub-hosted Copilot model, via your own
+  Copilot entitlement. No source code, no user identities, no repository contents.
 - **No tools / no exfiltration path.** The deny-all permission guard means the model cannot read your
   database, files, or network even if prompted to.
 - **Off by default.** The feature ships disabled (`ai_enabled = false`) and must be turned on in
@@ -343,6 +405,14 @@ Narratives are cached in the **`ai_insights`** table (`app/src/lib/db/schema.ts`
 | Enable AI Analyst | `ai_enabled` | default `false` |
 | Copilot token | `copilot_token` | fine-grained PAT / OAuth, Copilot-licensed |
 | Model | `ai_model` | `auto` or a specific model id; high-reasoning models recommended |
+| Additional instructions & assumptions | `ai_additional_instructions` | optional admin-provided enterprise context, business assumptions, priorities, terminology, or reporting preferences |
+
+The settings page also shows:
+
+- **Check access** — validates the Copilot token and lists available models;
+- **Enterprise context** — shows persisted seat assignment snapshot availability, org member counts,
+  and latest GitHub access health;
+- **Cached insights** — shows cached record count and lets admins clear generated narratives.
 
 ---
 
@@ -358,6 +428,14 @@ Narratives are cached in the **`ai_insights`** table (`app/src/lib/db/schema.ts`
   measured savings — adjust them to your organization's actuals before quoting them.
 - **Team scorecards need synced teams.** They require enterprise teams to be synced, and per-team
   AI-credit figures populate after a usage-metrics sync ingests the per-user `ai_credits_used` field.
+- **Live-only enterprise context must be persisted first.** Seat assignment details such as plan type,
+  assigning team, pending cancellation, and last-activity editor are available only after a seats API
+  snapshot has been persisted. If GitHub returns 404/403 for the seats endpoint, sync continues and
+  the AI payload marks that context as unavailable.
+- **Admin assumptions can shape interpretation but not create measured facts.** The model may use the
+  admin-provided instructions as assumptions/context, but it must not treat them as measured metrics.
+- **Analysis confidence is subjective.** The model is asked to state its confidence in the
+  interpretation; `dataQuality.evidenceCompletenessPct` is only a readiness/caveat signal.
 - **Experimental.** Surfaces are labeled accordingly and are opt-in.
 
 ---

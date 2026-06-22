@@ -13,7 +13,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { usePdfExport } from "@/components/ui/pdf-export";
 import { ConfigurationBanner } from "@/components/layout/configuration-banner";
 import { DataSourceBanner } from "@/components/layout/report-filters";
-import { InsightPanel } from "@/components/ai/insight-panel";
+import { AiInsightPanel } from "@/components/ai/insight-panel";
 import { AlertTriangle, Settings, Lightbulb, ExternalLink, Coins } from "lucide-react";
 import Link from "next/link";
 
@@ -615,9 +615,10 @@ export default function AiCreditsPage() {
       <DataSourceBanner sourceLabel="GitHub AI Credit Billing API (/settings/billing/ai_credit/usage) + per-user ai_credits_used (Copilot Usage Metrics) + PR overlays" live />
       <ReportBanner title={t("aiCredits.aboutTitle")} body={t("aiCredits.aboutBody")} />
 
-      <InsightPanel
+      <AiInsightPanel
         kind="cost_license"
         title={t("aiAnalyst.cost")}
+        description={t("aiAnalyst.costDesc")}
         icon={Coins}
         start={monthStart(year, month)}
         end={monthEnd(year, month)}

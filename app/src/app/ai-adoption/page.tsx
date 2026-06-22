@@ -12,7 +12,7 @@ import { ReportFilters, DataSourceBanner, formatDateRangeLabel, type FilterState
 import { ConfigurationBanner } from "@/components/layout/configuration-banner";
 import { PageHeader } from "@/components/layout/page-header";
 import { ReportBanner } from "@/components/layout/report-banner";
-import { InsightPanel } from "@/components/ai/insight-panel";
+import { AiInsightPanel } from "@/components/ai/insight-panel";
 import { Layers } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -197,9 +197,10 @@ export default function AiAdoptionPage() {
       <ReportBanner title={t("aiAdoption.aboutTitle")} body={t("aiAdoption.aboutBody")} />
 
       {appliedFilters && (
-        <InsightPanel
+        <AiInsightPanel
           kind="adoption"
           title={t("aiAnalyst.adoption")}
+          description={t("aiAnalyst.adoptionDesc")}
           icon={Layers}
           start={appliedFilters.startDate}
           end={appliedFilters.endDate}

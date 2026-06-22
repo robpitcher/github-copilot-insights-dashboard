@@ -10,7 +10,7 @@ import { ReportFilters, DataSourceBanner } from "@/components/layout/report-filt
 import type { FilterState, DataRange } from "@/components/layout/report-filters";
 import { PageHeader } from "@/components/layout/page-header";
 import { ReportBanner } from "@/components/layout/report-banner";
-import { InsightPanel } from "@/components/ai/insight-panel";
+import { AiInsightPanel } from "@/components/ai/insight-panel";
 import { GitPullRequest } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/locale-provider";
 import { useChartOptions } from "@/lib/theme/chart-theme";
@@ -240,9 +240,10 @@ export default function PullRequestsPage() {
       <ReportBanner title={t("pullRequests.aboutTitle")} body={t("pullRequests.aboutBody")} />
 
       {appliedFilters && (
-        <InsightPanel
+        <AiInsightPanel
           kind="delivery"
           title={t("aiAnalyst.delivery")}
+          description={t("aiAnalyst.deliveryDesc")}
           icon={GitPullRequest}
           start={appliedFilters.startDate}
           end={appliedFilters.endDate}
