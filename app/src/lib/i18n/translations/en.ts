@@ -119,6 +119,7 @@ export const en = {
     first: "First",
     last: "Last",
     noResults: "No results found",
+    selectedCount: "{0} selected",
     csvExport: "CSV",
     rowsPerPage: "Rows per page",
     licensed: "Licensed",
@@ -568,6 +569,8 @@ export const en = {
     loading: "Loading AI Credit data…",
     prev: "Prev",
     next: "Next",
+    period: "Period",
+    reset: "Reset",
     filtersTitle: "Drill-down Filters",
     filtersDesc: "Slice AI Credit usage and spend by model, cost center, organization, user, and team",
     model: "Model",
@@ -840,7 +843,7 @@ export const en = {
 
   landing: {
     title: "GitHub Copilot Insights",
-    subtitle: "A centralized analytics dashboard for enterprise GitHub Copilot adoption. Visualize usage metrics, license allocation, premium request consumption, and AI model activity — all sourced from the GitHub Copilot Usage Metrics API.",
+    subtitle: "Enterprise analytics for GitHub Copilot adoption, usage, licensing, and AI spend.",
     viewCopilotUsage: "View Copilot Usage",
     copilotUsage: "Copilot Usage",
     copilotUsageDesc: "Track daily and weekly active users, code completions, chat requests, and model usage trends over time.",

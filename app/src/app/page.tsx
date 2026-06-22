@@ -14,6 +14,7 @@ import {
   Network,
   ArrowRight,
   Code,
+  Sparkles,
 } from "lucide-react";
 import { AgentIcon } from "@/components/icons/agent-icon";
 import { CliIcon } from "@/components/icons/cli-icon";
@@ -25,6 +26,13 @@ export default function LandingPage() {
   const { t } = useTranslation();
 
   const sections = [
+    {
+      title: t("aiAnalyst.title"),
+      description: t("aiAnalyst.subtitle"),
+      href: "/ai-analyst",
+      icon: Sparkles,
+      color: "text-violet-600 bg-violet-50 dark:bg-violet-900/30 dark:text-violet-400",
+    },
     {
       title: t("landing.copilotUsage"),
       description: t("landing.copilotUsageDesc"),
@@ -128,7 +136,7 @@ export default function LandingPage() {
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
           {t("landing.title")}
         </h1>
-        <p className="mx-auto mt-3 max-w-2xl text-base text-gray-600 dark:text-gray-400">
+        <p className="mx-auto mt-3 max-w-3xl text-base text-gray-600 dark:text-gray-400">
           {t("landing.subtitle")}
         </p>
         <Link
@@ -148,17 +156,17 @@ export default function LandingPage() {
             <Link
               key={s.href}
               href={s.href}
-              className="group rounded-lg border border-gray-200 bg-white p-5 transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
+              className="group rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
             >
-              <div
-                className={`mb-3 inline-flex rounded-lg p-2.5 ${s.color}`}
-              >
-                <Icon className="h-5 w-5" />
+              <div className="flex items-center gap-3">
+                <div className={`inline-flex shrink-0 rounded-lg p-2 ${s.color}`}>
+                  <Icon className="h-5 w-5" />
+                </div>
+                <h2 className="text-sm font-semibold text-gray-900 group-hover:text-blue-600 dark:text-gray-100 dark:group-hover:text-blue-400">
+                  {s.title}
+                </h2>
               </div>
-              <h2 className="text-sm font-semibold text-gray-900 group-hover:text-blue-600 dark:text-gray-100 dark:group-hover:text-blue-400">
-                {s.title}
-              </h2>
-              <p className="mt-1 text-xs text-gray-500 leading-relaxed dark:text-gray-400">
+              <p className="mt-2 text-xs text-gray-500 leading-relaxed dark:text-gray-400">
                 {s.description}
               </p>
             </Link>

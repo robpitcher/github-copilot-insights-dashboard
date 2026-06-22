@@ -12,6 +12,7 @@ function parseCsvInts(value?: string): number[] {
 
 export interface TeamAwareFilterInput {
   userId?: number;
+  userIds?: number[];
   teamName?: string;
   orgId?: string;
   teamId?: string;
@@ -29,6 +30,13 @@ export async function resolveTeamAwareUserFilter(
   const orgIds = parseCsvInts(params.orgId);
   const selectedLocalTeamIds = parseCsvInts(params.teamId);
   const teamFilterApplied = selectedLocalTeamIds.length > 0;
+  const userIdList =
+    params.userIds && params.userIds.length > 0
+      ? params.userIds
+      : params.userId != null
+        ? [params.userId]
+        : [];
+  const hasUserFilter = userIdList.length > 0;
 
   let selectedGithubTeamIds: number[] = [];
   let teamMemberUserIds: number[] = [];
@@ -53,7 +61,7 @@ export async function resolveTeamAwareUserFilter(
     }
   }
 
-  if (!params.userId && !params.teamName && orgIds.length === 0 && !teamFilterApplied) {
+  if (!hasUserFilter && !params.teamName && orgIds.length === 0 && !teamFilterApplied) {
     return { teamFilterApplied: false, selectedGithubTeamIds: [], userIds: null };
   }
 
@@ -63,7 +71,7 @@ export async function resolveTeamAwareUserFilter(
 
   if (
     teamFilterApplied &&
-    !params.userId &&
+    !hasUserFilter &&
     !params.teamName &&
     orgIds.length === 0
   ) {
@@ -76,7 +84,8 @@ export async function resolveTeamAwareUserFilter(
 
   const conditions = [eq(dimUser.isCurrent, true)];
 
-  if (params.userId) conditions.push(eq(dimUser.userId, params.userId));
+  if (userIdList.length === 1) conditions.push(eq(dimUser.userId, userIdList[0]));
+  else if (userIdList.length > 1) conditions.push(inArray(dimUser.userId, userIdList));
   if (params.teamName) conditions.push(eq(dimUser.teamName, params.teamName));
   if (orgIds.length === 1) conditions.push(eq(dimUser.orgId, orgIds[0]));
   else if (orgIds.length > 1) conditions.push(inArray(dimUser.orgId, orgIds));

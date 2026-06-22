@@ -65,7 +65,7 @@ const querySchema = z.object({
   month: z.coerce.number().int().min(1).max(12).optional(),
   model: z.string().optional(),
   costCenter: z.string().optional(),
-  userId: z.coerce.number().int().optional(),
+  userId: z.string().optional(),
   orgId: z.string().optional(),
   teamId: z.string().optional(),
 });
@@ -417,18 +417,24 @@ export async function GET(request: NextRequest) {
     const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
     const windowEnd = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
     const consumption = await getCreditConsumption(windowStart, windowEnd, {
-      userId: parsed.userId,
+      userIds: (parsed.userId ?? "")
+        .split(",")
+        .map((s) => parseInt(s.trim(), 10))
+        .filter((n) => Number.isInteger(n)),
       orgId: parsed.orgId,
       teamId: parsed.teamId,
     });
 
-    // Resolve display names. Bounded to the rows actually rendered (billing +
-    // consumption breakdowns) to avoid a per-request lookup of every user in the
-    // window; the user filter options fall back to the login as their label.
+    // Resolve display names for every login surfaced in the response: the
+    // rendered breakdown rows (billing + consumption) and the user filter
+    // options. This mirrors the shared /api/filters behaviour so dropdown
+    // entries with no usage in the window still show "Name (login)" rather than
+    // falling back to the bare login. resolveDisplayNames dedupes and batches.
     const userLogins = Array.from(
       new Set([
         ...perUserMap.keys(),
         ...consumption.perUser.map((u) => u.userLogin),
+        ...consumption.options.users.map((u) => u.userLogin),
       ]),
     );
     const displayNameMap = await resolveDisplayNames(userLogins, token);
@@ -545,7 +551,7 @@ export async function GET(request: NextRequest) {
         selected: {
           model: parsed.model ?? "",
           costCenter: parsed.costCenter ?? "",
-          userId: parsed.userId != null ? String(parsed.userId) : "",
+          userId: parsed.userId ?? "",
           orgId: parsed.orgId ?? "",
           teamId: parsed.teamId ?? "",
         },

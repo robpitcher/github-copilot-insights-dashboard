@@ -8,6 +8,7 @@ import { useTranslation } from "@/lib/i18n/locale-provider";
 import { PageHeader } from "@/components/layout/page-header";
 import { ReportBanner } from "@/components/layout/report-banner";
 import { DataTable } from "@/components/ui/data-table";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { usePdfExport } from "@/components/ui/pdf-export";
 import { ConfigurationBanner } from "@/components/layout/configuration-banner";
@@ -180,13 +181,25 @@ export default function AiCreditsPage() {
   const { commonOptions: barOpts, doughnutOptions: doughnutOpts } = useChartOptions();
   const { t } = useTranslation();
   const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
-  const [modelFilter, setModelFilter] = useState("");
-  const [costCenterFilter, setCostCenterFilter] = useState("");
-  const [userId, setUserId] = useState("");
-  const [orgId, setOrgId] = useState("");
-  const [teamId, setTeamId] = useState("");
+  // Applied snapshot drives the data fetch; the filter bar edits draft state and
+  // commits it on Apply (mirrors the shared ReportFilters experience).
+  const [applied, setApplied] = useState(() => ({
+    year: now.getFullYear(),
+    month: now.getMonth() + 1,
+    models: [] as string[],
+    costCenters: [] as string[],
+    userIds: [] as string[],
+    orgIds: [] as string[],
+    teamIds: [] as string[],
+  }));
+  const { year, month } = applied;
+  const [draftYear, setDraftYear] = useState(applied.year);
+  const [draftMonth, setDraftMonth] = useState(applied.month);
+  const [modelFilter, setModelFilter] = useState<string[]>([]);
+  const [costCenterFilter, setCostCenterFilter] = useState<string[]>([]);
+  const [userId, setUserId] = useState<string[]>([]);
+  const [orgId, setOrgId] = useState<string[]>([]);
+  const [teamId, setTeamId] = useState<string[]>([]);
   const [trendGranularity, setTrendGranularity] = useState<"daily" | "weekly" | "monthly" | "3m" | "6m">("monthly");
   const [data, setData] = useState<AiCreditData | null>(null);
   const [dashboardOverlay, setDashboardOverlay] = useState<DashboardOverlay | null>(null);
@@ -199,14 +212,15 @@ export default function AiCreditsPage() {
     setLoading(true);
     setError(null);
 
-    const start = monthStart(year, month);
-    const end = monthEnd(year, month);
-    const params = new URLSearchParams({ year: String(year), month: String(month) });
-    if (modelFilter) params.set("model", modelFilter);
-    if (costCenterFilter) params.set("costCenter", costCenterFilter);
-    if (userId) params.set("userId", userId);
-    if (orgId) params.set("orgId", orgId);
-    if (teamId) params.set("teamId", teamId);
+    const { year: y, month: m, models, costCenters, userIds, orgIds, teamIds } = applied;
+    const start = monthStart(y, m);
+    const end = monthEnd(y, m);
+    const params = new URLSearchParams({ year: String(y), month: String(m) });
+    if (models.length) params.set("model", models.join(","));
+    if (costCenters.length) params.set("costCenter", costCenters.join(","));
+    if (userIds.length) params.set("userId", userIds.join(","));
+    if (orgIds.length) params.set("orgId", orgIds.join(","));
+    if (teamIds.length) params.set("teamId", teamIds.join(","));
 
     Promise.all([
       fetch(`/api/metrics/ai-credits?${params.toString()}`).then(async (res) => {
@@ -226,17 +240,28 @@ export default function AiCreditsPage() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [year, month, modelFilter, costCenterFilter, userId, orgId, teamId]);
+  }, [applied]);
 
   useEffect(() => {
     if (!data) return;
-    const { options } = data.filters;
-    if (modelFilter && !options.models.some((m) => m.value === modelFilter)) setModelFilter("");
-    if (costCenterFilter && !options.costCenters.includes(costCenterFilter)) setCostCenterFilter("");
-    if (userId && !options.users.some((u) => String(u.userId) === userId)) setUserId("");
-    if (orgId && !options.orgs.some((o) => String(o.id) === orgId)) setOrgId("");
-    if (teamId && !options.teams.some((tm) => String(tm.id) === teamId)) setTeamId("");
-  }, [data, modelFilter, costCenterFilter, userId, orgId, teamId]);
+    const o = data.filters.options;
+    const valid = {
+      models: new Set(o.models.map((m) => m.value)),
+      costCenters: new Set(o.costCenters),
+      users: new Set(o.users.map((u) => String(u.userId))),
+      orgs: new Set(o.orgs.map((x) => String(x.id))),
+      teams: new Set(o.teams.map((x) => String(x.id))),
+    };
+    const prune = (prev: string[], allowed: Set<string>) => {
+      const next = prev.filter((v) => allowed.has(v));
+      return next.length === prev.length ? prev : next;
+    };
+    setModelFilter((p) => prune(p, valid.models));
+    setCostCenterFilter((p) => prune(p, valid.costCenters));
+    setUserId((p) => prune(p, valid.users));
+    setOrgId((p) => prune(p, valid.orgs));
+    setTeamId((p) => prune(p, valid.teams));
+  }, [data]);
 
   const compositionDonut = useMemo(() => {
     if (!data) return null;
@@ -463,13 +488,52 @@ export default function AiCreditsPage() {
   }, [data, dashboardOverlay, prOverlay, t]);
 
   const goMonth = (delta: number) => {
-    let m = month + delta;
-    let y = year;
+    let m = draftMonth + delta;
+    let y = draftYear;
     if (m < 1) { m = 12; y--; }
     if (m > 12) { m = 1; y++; }
-    setYear(y);
-    setMonth(m);
+    setDraftYear(y);
+    setDraftMonth(m);
   };
+
+  const sameSelection = (a: string[], b: string[]) =>
+    a.length === b.length && a.every((v) => b.includes(v));
+  const hasActiveFilters =
+    modelFilter.length > 0 ||
+    costCenterFilter.length > 0 ||
+    userId.length > 0 ||
+    orgId.length > 0 ||
+    teamId.length > 0;
+  const filtersDirty =
+    draftYear !== applied.year ||
+    draftMonth !== applied.month ||
+    !sameSelection(modelFilter, applied.models) ||
+    !sameSelection(costCenterFilter, applied.costCenters) ||
+    !sameSelection(userId, applied.userIds) ||
+    !sameSelection(orgId, applied.orgIds) ||
+    !sameSelection(teamId, applied.teamIds);
+  const applyFilters = () => {
+    setApplied({
+      year: draftYear,
+      month: draftMonth,
+      models: modelFilter,
+      costCenters: costCenterFilter,
+      userIds: userId,
+      orgIds: orgId,
+      teamIds: teamId,
+    });
+  };
+  const resetFilters = () => {
+    setModelFilter([]);
+    setCostCenterFilter([]);
+    setUserId([]);
+    setOrgId([]);
+    setTeamId([]);
+    setApplied((prev) => ({ ...prev, models: [], costCenters: [], userIds: [], orgIds: [], teamIds: [] }));
+  };
+  const fmtPeriodDay = (iso: string) =>
+    new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  const periodRangeLabel = `${fmtPeriodDay(monthStart(draftYear, draftMonth))} – ${fmtPeriodDay(monthEnd(draftYear, draftMonth))}`;
 
   if (loading) {
     return <LoadingSpinner message={t("aiCredits.loading")} />;
@@ -591,66 +655,88 @@ export default function AiCreditsPage() {
         </ul>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          onClick={() => goMonth(-1)}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-        >
-          ← {t("aiCredits.prev")}
-        </button>
-        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-          {MONTH_NAMES[month - 1]} {year}
-        </span>
-        <button
-          onClick={() => goMonth(1)}
-          disabled={year === now.getFullYear() && month === now.getMonth() + 1}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-        >
-          {t("aiCredits.next")} →
-        </button>
-      </div>
-
       <Card title={t("aiCredits.filtersTitle")} subtitle={t("aiCredits.filtersDesc")}>
+        <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-gray-100 pb-3 dark:border-gray-700">
+          <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            {t("aiCredits.period")}
+          </span>
+          <button
+            onClick={() => goMonth(-1)}
+            className="rounded-md border border-gray-300 px-2.5 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+          >
+            ← {t("aiCredits.prev")}
+          </button>
+          <span className="min-w-28 text-center text-sm font-medium text-gray-900 dark:text-gray-100">
+            {MONTH_NAMES[draftMonth - 1]} {draftYear}
+          </span>
+          <button
+            onClick={() => goMonth(1)}
+            disabled={draftYear === now.getFullYear() && draftMonth === now.getMonth() + 1}
+            className="rounded-md border border-gray-300 px-2.5 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+          >
+            {t("aiCredits.next")} →
+          </button>
+          <span className="ml-1 text-xs text-gray-400 dark:text-gray-500">{periodRangeLabel}</span>
+        </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-5">
-          <SelectFilter
+          <MultiSelectFilter
             label={t("aiCredits.model")}
             allLabel={t("common.all")}
-            value={modelFilter}
+            selected={modelFilter}
             onChange={setModelFilter}
             options={data.filters.options.models.map((m) => ({ value: m.value, label: m.label }))}
           />
-          <SelectFilter
+          <MultiSelectFilter
             label={t("aiCredits.costCenter")}
             allLabel={t("common.all")}
-            value={costCenterFilter}
+            selected={costCenterFilter}
             onChange={setCostCenterFilter}
             options={data.filters.options.costCenters.map((v) => ({ value: v, label: v }))}
             emptyHint={t("aiCredits.noFilterData")}
           />
-          <SelectFilter
+          <MultiSelectFilter
             label={t("aiCredits.organization")}
             allLabel={t("common.all")}
-            value={orgId}
+            selected={orgId}
             onChange={setOrgId}
             options={data.filters.options.orgs.map((o) => ({ value: String(o.id), label: o.name }))}
             emptyHint={t("aiCredits.noFilterData")}
           />
-          <SelectFilter
+          <MultiSelectFilter
             label={t("aiCredits.user")}
             allLabel={t("common.all")}
-            value={userId}
+            selected={userId}
             onChange={setUserId}
             options={data.filters.options.users.map((u) => ({ value: String(u.userId), label: u.displayLabel }))}
             emptyHint={t("aiCredits.noFilterData")}
           />
-          <SelectFilter
+          <MultiSelectFilter
             label={t("aiCredits.team")}
             allLabel={t("common.all")}
-            value={teamId}
+            selected={teamId}
             onChange={setTeamId}
             options={data.filters.options.teams.map((tm) => ({ value: String(tm.id), label: tm.name }))}
             emptyHint={t("aiCredits.noFilterData")}
           />
+        </div>
+        <div className="mt-3 flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 pt-3 dark:border-gray-700">
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+            >
+              {t("aiCredits.reset")}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={applyFilters}
+            disabled={!filtersDirty}
+            className="rounded-md bg-blue-600 px-4 py-1.5 text-sm font-medium text-white shadow-xs hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {t("common.apply")}
+          </button>
         </div>
       </Card>
 
@@ -1069,39 +1155,5 @@ function Kpi({ label, value, color }: { label: string; value: string | number; c
         {typeof value === "number" ? value.toLocaleString() : value}
       </p>
     </div>
-  );
-}
-
-function SelectFilter({
-  label,
-  allLabel,
-  value,
-  onChange,
-  options,
-  emptyHint,
-}: {
-  label: string;
-  allLabel: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: Array<{ value: string; label: string }>;
-  emptyHint?: string;
-}) {
-  const hasOptions = options.length > 0;
-  return (
-    <label className="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-300">
-      <span className="font-medium">{label}</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={!hasOptions}
-        className="rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 shadow-xs focus:border-blue-500 focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
-      >
-        <option value="">{hasOptions ? allLabel : (emptyHint ?? allLabel)}</option>
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>{opt.label}</option>
-        ))}
-      </select>
-    </label>
   );
 }
