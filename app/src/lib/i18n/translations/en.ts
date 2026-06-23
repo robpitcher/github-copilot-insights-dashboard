@@ -128,6 +128,7 @@ export const en = {
     export: "Export",
     exporting: "Exporting…",
     signOut: "Sign Out",
+    signedInAs: "Signed in as",
     settings: "Settings",
     allUsers: "All users",
     allOrganizations: "All organizations",
@@ -223,6 +224,7 @@ export const en = {
 
   nav: {
     copilotUsage: "Copilot Usage",
+    myUsage: "My Usage",
     codeGeneration: "Code Generation",
     pullRequests: "PR & Autofix",
     agentImpact: "Copilot Agents",
@@ -742,6 +744,32 @@ export const en = {
     optimizeTip5: "Cap additional usage and get alerts at 75/90/100% with user, cost-center, and enterprise budgets",
     optimizeTip5Link: "https://docs.github.com/en/billing/managing-your-billing/using-budgets-control-spending",
     optimizeTip5LinkText: "Set up budgets & alerts →",
+  },
+
+  myUsage: {
+    title: "My Copilot Usage",
+    subtitle: "Your own AI Credit consumption, broken down by model — scoped to your signed-in identity",
+    aboutTitle: "About My Usage",
+    aboutBody: "This report shows only your own AI Credit usage. Identity is implicit — the server scopes every row to your signed-in GitHub login, so a month selector and model breakdown reflect your activity alone. Data is read from pre-ingested AI Credit billing rows; you never receive billing scopes.",
+    loading: "Loading your usage…",
+    prev: "Prev",
+    next: "Next",
+    grossCredits: "Gross Credits",
+    includedCredits: "Included Credits",
+    billableCredits: "Additional Credits",
+    netAmount: "Additional Usage",
+    creditsLabel: "AI Credits",
+    netSpend: "Net Spend ($)",
+    model: "Model",
+    grossAmount: "Gross Amount",
+    byModel: "My AI Credits by model",
+    byModelDesc: "Your top models by AI Credit consumption this month",
+    noModelData: "No model-level usage for this month",
+    modelBreakdown: "Model breakdown",
+    modelBreakdownDesc: "Your AI Credit usage and spend per model",
+    trendTitle: "My Net Spend Trend (6 months)",
+    trendDesc: "Your trailing AI Credit spend trend",
+    noTrend: "No trend data available yet",
   },
 
   models: {
