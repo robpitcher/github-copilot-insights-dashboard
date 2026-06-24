@@ -198,8 +198,18 @@ export function Sidebar() {
         )}
         <button
           type="button"
-          onClick={() => {
+          onClick={async () => {
             sessionStorage.removeItem("dashboard_authenticated");
+            sessionStorage.removeItem("admin_authenticated");
+            // In identity mode the session lives in an httpOnly cookie, so it
+            // must be cleared server-side before reloading into the sign-in gate.
+            if (session?.identityMode) {
+              try {
+                await fetch("/api/auth/logout", { method: "POST" });
+              } catch {
+                // Ignore — reloading still drops client-side state.
+              }
+            }
             window.location.reload();
           }}
           className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"

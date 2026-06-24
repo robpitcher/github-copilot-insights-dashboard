@@ -52,6 +52,9 @@ export const fr: TranslationKeys = {
     unlockSettings: "Déverrouiller les paramètres",
     invalidPassword: "Mot de passe invalide",
     networkError: "Erreur réseau",
+    signInTitle: "Se connecter",
+    signInPrompt: "Connectez-vous avec votre compte GitHub pour accéder au tableau de bord.",
+    signInWithGitHub: "Se connecter avec GitHub",
   },
 
   aiSettings: {

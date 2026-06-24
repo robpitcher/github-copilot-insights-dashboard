@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Lock, Loader2, AlertCircle } from "lucide-react";
+import { GithubIcon } from "@/components/icons/github-icon";
 import { useTranslation } from "@/lib/i18n/locale-provider";
 
 /**
@@ -14,15 +15,35 @@ import { useTranslation } from "@/lib/i18n/locale-provider";
  */
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
-  const [status, setStatus] = useState<"checking" | "open" | "locked" | "authenticated">("checking");
+  const [status, setStatus] = useState<"checking" | "open" | "locked" | "signin" | "authenticated">("checking");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
-    fetch("/api/auth/verify-dashboard")
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to check auth"))))
-      .then((data: { required: boolean }) => {
+    let cancelled = false;
+
+    async function resolveAuth() {
+      try {
+        // Identity mode (GitHub OAuth) takes precedence, mirroring the proxy:
+        // an unauthenticated user is shown a sign-in gate rather than the app.
+        const sessionRes = await fetch("/api/auth/session");
+        if (sessionRes.ok) {
+          const session = (await sessionRes.json()) as {
+            identityMode: boolean;
+            authenticated: boolean;
+          };
+          if (session.identityMode) {
+            if (!cancelled) setStatus(session.authenticated ? "authenticated" : "signin");
+            return;
+          }
+        }
+
+        // Shared-password mode: gate on DASHBOARD_PASSWORD.
+        const res = await fetch("/api/auth/verify-dashboard");
+        if (!res.ok) throw new Error("Failed to check auth");
+        const data = (await res.json()) as { required: boolean };
+        if (cancelled) return;
         if (!data.required) {
           setStatus("open");
         } else if (typeof window !== "undefined" && sessionStorage.getItem("dashboard_authenticated") === "true") {
@@ -30,11 +51,16 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         } else {
           setStatus("locked");
         }
-      })
-      .catch(() => {
-        // If auth check fails, allow access (fail-open for usability)
-        setStatus("open");
-      });
+      } catch {
+        // If auth checks fail, allow access (fail-open for usability).
+        if (!cancelled) setStatus("open");
+      }
+    }
+
+    resolveAuth();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,6 +103,29 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (status === "open" || status === "authenticated") {
     return <>{children}</>;
+  }
+
+  if (status === "signin") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950">
+        <div className="w-full max-w-sm rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <div className="mb-4 flex items-center gap-2">
+            <GithubIcon className="h-5 w-5 text-gray-900 dark:text-gray-100" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t("auth.signInTitle")}</h2>
+          </div>
+          <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
+            {t("auth.signInPrompt")}
+          </p>
+          <a
+            href="/api/auth/github/login"
+            className="flex w-full items-center justify-center gap-2 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-xs hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white"
+          >
+            <GithubIcon className="h-4 w-4" />
+            {t("auth.signInWithGitHub")}
+          </a>
+        </div>
+      </div>
+    );
   }
 
   return (

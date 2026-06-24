@@ -52,6 +52,9 @@ export const ar: TranslationKeys = {
     unlockSettings: "فتح الإعدادات",
     invalidPassword: "كلمة مرور غير صحيحة",
     networkError: "خطأ في الشبكة",
+    signInTitle: "تسجيل الدخول",
+    signInPrompt: "سجّل الدخول باستخدام حساب GitHub للوصول إلى لوحة المعلومات.",
+    signInWithGitHub: "تسجيل الدخول عبر GitHub",
   },
 
   aiSettings: {

@@ -50,6 +50,9 @@ export const en = {
     unlockSettings: "Unlock Settings",
     invalidPassword: "Invalid password",
     networkError: "Network error",
+    signInTitle: "Sign in",
+    signInPrompt: "Sign in with your GitHub account to access the dashboard.",
+    signInWithGitHub: "Sign in with GitHub",
   },
 
   aiSettings: {
