@@ -904,6 +904,7 @@ export const es: TranslationKeys = {
     title: "GitHub Copilot Insights",
     subtitle: "Análisis empresarial de GitHub Copilot: adopción, uso, licencias y gasto en IA.",
     viewCopilotUsage: "Ver uso de Copilot",
+    viewMyUsage: "Ver mi uso",
     copilotUsage: "Uso de Copilot",
     copilotUsageDesc: "Rastree usuarios activos diarios y semanales, completados de código, solicitudes de chat y tendencias de uso de modelos.",
     codeGeneration: "Generación de código",

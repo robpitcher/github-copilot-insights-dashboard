@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import {
   BarChart3,
   BookOpen,
@@ -15,6 +16,7 @@ import {
   ArrowRight,
   Code,
   Sparkles,
+  UserCircle,
 } from "lucide-react";
 import { AgentIcon } from "@/components/icons/agent-icon";
 import { CliIcon } from "@/components/icons/cli-icon";
@@ -22,16 +24,54 @@ import { useTranslation } from "@/lib/i18n/locale-provider";
 import { ConfigurationBanner } from "@/components/layout/configuration-banner";
 import { Reveal } from "@/components/ui/reveal";
 
+interface SessionInfo {
+  identityMode: boolean;
+  authenticated: boolean;
+  login: string | null;
+  role: "admin" | "developer" | null;
+}
+
 export default function LandingPage() {
   const { t } = useTranslation();
+  const [session, setSession] = useState<SessionInfo | null>(null);
+  const [sessionLoaded, setSessionLoaded] = useState(false);
 
-  const sections = [
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then((r) => (r.ok ? (r.json() as Promise<SessionInfo>) : null))
+      .then((data) => {
+        if (data) setSession(data);
+      })
+      .catch(() => {
+        // Fail open: keep current (non-gated) behavior if the check fails. The
+        // API middleware remains the source of truth for data access.
+      })
+      .finally(() => setSessionLoaded(true));
+  }, []);
+
+  // Gating only applies in identity mode, mirroring the sidebar. A developer
+  // sees only their own scoped surface ("My Usage"); org-wide cards are hidden.
+  const isIdentityMode = session?.identityMode === true;
+  const isDeveloper = isIdentityMode && session?.role === "developer";
+
+  // `orgWide`: cross-user report, hidden from developers.
+  // `identityOnly`: only shown in identity mode (e.g. "My Usage").
+  const allSections = [
     {
       title: t("aiAnalyst.title"),
       description: t("aiAnalyst.subtitle"),
       href: "/ai-analyst",
       icon: Sparkles,
       color: "text-violet-600 bg-violet-50 dark:bg-violet-900/30 dark:text-violet-400",
+      orgWide: true,
+    },
+    {
+      title: t("nav.myUsage"),
+      description: t("myUsage.subtitle"),
+      href: "/my-usage",
+      icon: UserCircle,
+      color: "text-sky-600 bg-sky-50 dark:bg-sky-900/30 dark:text-sky-400",
+      identityOnly: true,
     },
     {
       title: t("landing.copilotUsage"),
@@ -39,6 +79,7 @@ export default function LandingPage() {
       href: "/metrics",
       icon: BarChart3,
       color: "text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400",
+      orgWide: true,
     },
     {
       title: t("landing.codeGeneration"),
@@ -46,6 +87,7 @@ export default function LandingPage() {
       href: "/code-generation",
       icon: Code,
       color: "text-slate-600 bg-slate-50 dark:bg-slate-900/30 dark:text-slate-400",
+      orgWide: true,
     },
     {
       title: t("landing.pullRequests"),
@@ -53,6 +95,7 @@ export default function LandingPage() {
       href: "/pull-requests",
       icon: GitPullRequest,
       color: "text-orange-600 bg-orange-50 dark:bg-orange-900/30 dark:text-orange-400",
+      orgWide: true,
     },
     {
       title: t("landing.agentImpact"),
@@ -60,6 +103,7 @@ export default function LandingPage() {
       href: "/agents",
       icon: AgentIcon,
       color: "text-purple-600 bg-purple-50 dark:bg-purple-900/30 dark:text-purple-400",
+      orgWide: true,
     },
     {
       title: t("landing.aiAdoption"),
@@ -67,6 +111,7 @@ export default function LandingPage() {
       href: "/ai-adoption",
       icon: Layers,
       color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 dark:text-indigo-400",
+      orgWide: true,
     },
     {
       title: t("landing.cliImpact"),
@@ -74,6 +119,7 @@ export default function LandingPage() {
       href: "/cli",
       icon: CliIcon,
       color: "text-teal-600 bg-teal-50 dark:bg-teal-900/30 dark:text-teal-400",
+      orgWide: true,
     },
     {
       title: t("landing.copilotLicensing"),
@@ -81,6 +127,7 @@ export default function LandingPage() {
       href: "/seats",
       icon: CreditCard,
       color: "text-green-600 bg-green-50 dark:bg-green-900/30 dark:text-green-400",
+      orgWide: true,
     },
     {
       title: t("landing.premiumRequests"),
@@ -88,6 +135,7 @@ export default function LandingPage() {
       href: "/premium-requests",
       icon: Gem,
       color: "text-amber-600 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400",
+      orgWide: true,
     },
     {
       title: t("landing.aiCredits"),
@@ -95,6 +143,7 @@ export default function LandingPage() {
       href: "/ai-credits",
       icon: Coins,
       color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400",
+      orgWide: true,
     },
     {
       title: t("landing.usersTitle"),
@@ -102,6 +151,7 @@ export default function LandingPage() {
       href: "/users",
       icon: Contact,
       color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 dark:text-indigo-400",
+      orgWide: true,
     },
     {
       title: t("nav.enterpriseTeams"),
@@ -109,6 +159,7 @@ export default function LandingPage() {
       href: "/enterprise-teams",
       icon: Network,
       color: "text-pink-600 bg-pink-50 dark:bg-pink-900/30 dark:text-pink-400",
+      orgWide: true,
     },
     {
       title: t("nav.metricsReference"),
@@ -116,8 +167,21 @@ export default function LandingPage() {
       href: "/reference",
       icon: BookOpen,
       color: "text-gray-600 bg-gray-100 dark:bg-gray-700 dark:text-gray-300",
+      orgWide: true,
     },
   ];
+
+  const sections = allSections.filter((s) => {
+    if ("identityOnly" in s && s.identityOnly && !isIdentityMode) return false;
+    if ("orgWide" in s && s.orgWide && isDeveloper) return false;
+    return true;
+  });
+
+  // Developers land on their own usage; everyone else on the org-wide overview.
+  const heroHref = isDeveloper ? "/my-usage" : "/metrics";
+  const heroLabel = isDeveloper
+    ? t("landing.viewMyUsage")
+    : t("landing.viewCopilotUsage");
 
   return (
     <div className="mx-auto max-w-5xl space-y-10 py-8">
@@ -140,38 +204,52 @@ export default function LandingPage() {
           {t("landing.subtitle")}
         </p>
         <Link
-          href="/metrics"
+          href={heroHref}
           className="mt-6 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-xs transition-colors hover:bg-blue-700"
         >
-          {t("landing.viewCopilotUsage")}
+          {heroLabel}
           <ArrowRight className="h-4 w-4" />
         </Link>
       </Reveal>
 
       {/* Section Cards */}
       <Reveal stagger className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {sections.map((s) => {
-          const Icon = s.icon;
-          return (
-            <Link
-              key={s.href}
-              href={s.href}
-              className="group rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
-            >
-              <div className="flex items-center gap-3">
-                <div className={`inline-flex shrink-0 rounded-lg p-2.5 ${s.color}`}>
-                  <Icon className="h-5 w-5" />
+        {sessionLoaded
+          ? sections.map((s) => {
+              const Icon = s.icon;
+              return (
+                <Link
+                  key={s.href}
+                  href={s.href}
+                  className="group rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`inline-flex shrink-0 rounded-lg p-2.5 ${s.color}`}>
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <h2 className="min-w-0 text-sm font-semibold text-gray-900 group-hover:text-blue-600 dark:text-gray-100 dark:group-hover:text-blue-400">
+                      {s.title}
+                    </h2>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500 leading-relaxed dark:text-gray-400">
+                    {s.description}
+                  </p>
+                </Link>
+              );
+            })
+          : Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={`card-skeleton-${i}`}
+                className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 shrink-0 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-700" />
+                  <div className="h-4 w-24 animate-pulse rounded bg-gray-100 dark:bg-gray-700" />
                 </div>
-                <h2 className="min-w-0 text-sm font-semibold text-gray-900 group-hover:text-blue-600 dark:text-gray-100 dark:group-hover:text-blue-400">
-                  {s.title}
-                </h2>
+                <div className="mt-3 h-3 w-full animate-pulse rounded bg-gray-100 dark:bg-gray-700" />
+                <div className="mt-1.5 h-3 w-2/3 animate-pulse rounded bg-gray-100 dark:bg-gray-700" />
               </div>
-              <p className="mt-1 text-xs text-gray-500 leading-relaxed dark:text-gray-400">
-                {s.description}
-              </p>
-            </Link>
-          );
-        })}
+            ))}
       </Reveal>
 
       {/* Data source note */}

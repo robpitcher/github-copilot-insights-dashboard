@@ -921,6 +921,7 @@ export const en = {
     title: "GitHub Copilot Insights",
     subtitle: "Enterprise analytics for GitHub Copilot adoption, usage, licensing, and AI spend.",
     viewCopilotUsage: "View Copilot Usage",
+    viewMyUsage: "View My Usage",
     copilotUsage: "Copilot Usage",
     copilotUsageDesc: "Track daily and weekly active users, code completions, chat requests, and model usage trends over time.",
     codeGeneration: "Code Generation",

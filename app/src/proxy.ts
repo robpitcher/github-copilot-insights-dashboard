@@ -7,6 +7,11 @@ import { NextRequest, NextResponse } from "next/server";
  *   - Dashboard routes (metrics, filters, users) → require dashboard session cookie
  *   - Admin routes (settings, admin, ingest, audit-log) → require admin session cookie
  *
+ * In identity mode (GitHub OAuth) it additionally enforces role: admin routes
+ * require an `admin` session, and `developer` sessions are denied every org-wide
+ * / cross-user data route (see `isDeveloperForbidden`) so a developer can only
+ * ever read their own scoped data.
+ *
  * Uses Web Crypto API (Edge-compatible) for HMAC verification.
  */
 
@@ -26,6 +31,37 @@ const ADMIN_PREFIXES = [
   "/api/ingest",
   "/api/audit-log",
 ];
+
+/** True when `pathname` equals `prefix` or is a child path under it. */
+function underPrefix(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(prefix + "/");
+}
+
+/**
+ * Org-wide / cross-user API routes a `developer` may never read. A developer's
+ * only data surface is their own scoped views — primarily "My Usage", which is
+ * served by `/api/metrics/ai-credits` (forced server-side to the signed-in
+ * login). Every other metrics report, the user directory, the global filter
+ * options (which list all users), enterprise-team membership, and the org-wide
+ * AI Analyst are cross-user and therefore denied here.
+ *
+ * Enforcing this centrally means a hidden nav entry or removed landing card can
+ * never be bypassed with a direct request. Only `developer` sessions in identity
+ * mode are affected — admins and open / shared-password modes are unchanged.
+ */
+export function isDeveloperForbidden(pathname: string): boolean {
+  // A developer's own scoped usage (My Usage) is always allowed.
+  if (underPrefix(pathname, "/api/metrics/ai-credits")) return false;
+  // All other cross-user metrics reports are denied.
+  if (pathname.startsWith("/api/metrics/")) return true;
+  // Other cross-user surfaces.
+  return (
+    underPrefix(pathname, "/api/users") ||
+    underPrefix(pathname, "/api/filters") ||
+    underPrefix(pathname, "/api/enterprise-teams") ||
+    underPrefix(pathname, "/api/ai")
+  );
+}
 
 /* ── Web Crypto helpers (Edge-compatible) ── */
 
@@ -217,6 +253,9 @@ export async function proxy(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     if (isAdminRoute && session.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    if (session.role === "developer" && isDeveloperForbidden(pathname)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     return NextResponse.next();
